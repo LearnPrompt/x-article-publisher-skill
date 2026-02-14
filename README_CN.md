@@ -29,11 +29,17 @@
 ## 安装
 
 ```bash
-git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
-cp -r x-article-publisher-skill/skills/x-article-publisher "$CODEX_HOME/skills/"
+curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
 ```
 
-如果没设置 `CODEX_HOME`，默认一般是 `~/.codex`。
+手动安装方式：
+
+```bash
+git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
+bash x-article-publisher-skill/install.sh
+```
+
+如果没设置 `CODEX_HOME`，默认是 `~/.codex`。
 
 ## 用法
 

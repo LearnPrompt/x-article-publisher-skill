@@ -29,11 +29,17 @@
 ## Install
 
 ```bash
-git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
-cp -r x-article-publisher-skill/skills/x-article-publisher "$CODEX_HOME/skills/"
+curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
 ```
 
-`$CODEX_HOME` is typically `~/.codex`.
+Manual install:
+
+```bash
+git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
+bash x-article-publisher-skill/install.sh
+```
+
+`$CODEX_HOME` defaults to `~/.codex` when not set.
 
 ## Usage
 
