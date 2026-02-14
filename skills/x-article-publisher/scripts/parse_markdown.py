@@ -5,8 +5,9 @@ Parse Markdown for X Articles publishing.
 Extracts:
 - Title (from first H1/H2 or first line)
 - Cover image (first image)
-- Content images with block index for precise positioning
-- HTML content (images stripped)
+- Content media (images + videos) with block index for precise positioning
+- Dividers (---) with block index for menu insertion
+- HTML content (media and dividers stripped)
 
 Usage:
     python parse_markdown.py <markdown_file> [--output json|html]
@@ -15,16 +16,25 @@ Output (JSON):
 {
     "title": "Article Title",
     "cover_image": "/path/to/cover.jpg",
-    "content_images": [
-        {"path": "/path/to/img.jpg", "block_index": 3, "after_text": "context..."},
+    "content_media": [
+        {"type": "image", "path": "/path/to/img.jpg", "block_index": 3, "after_text": "context..."},
+        {"type": "video", "path": "/path/to/video.mp4", "block_index": 8, "after_text": "context..."},
+        ...
+    ],
+    "content_images": [...],  // backwards compatible
+    "content_videos": [...],
+    "dividers": [
+        {"block_index": 7, "after_text": "context..."},
         ...
     ],
     "html": "<p>Content...</p><h2>Section</h2>...",
     "total_blocks": 25
 }
 
-The block_index indicates which block element (0-indexed) the image should follow.
+The block_index indicates which block element (0-indexed) the image/divider should follow.
 This allows precise positioning without relying on text matching.
+
+Note: Dividers must be inserted via X Articles' Insert > Divider menu, not HTML <hr> tags.
 """
 
 import argparse
@@ -32,7 +42,64 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 from pathlib import Path
+
+
+# Common search directories for missing media
+SEARCH_DIRS = [
+    Path.home() / "Downloads",
+    Path.home() / "Desktop",
+    Path.home() / "Pictures",
+]
+
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv", ".mpeg", ".mpg"}
+
+
+def is_remote_path(media_path: str) -> bool:
+    """Whether media_path is a remote URL."""
+    parsed = urllib.parse.urlparse(media_path)
+    return parsed.scheme in ("http", "https")
+
+
+def media_type_for_path(media_path: str) -> str:
+    """Infer media type from path extension."""
+    clean = media_path.split("?", 1)[0].split("#", 1)[0]
+    ext = Path(clean).suffix.lower()
+    if ext in VIDEO_EXTENSIONS:
+        return "video"
+    return "image"
+
+
+def find_media_file(original_path: str, filename: str, media_type: str) -> tuple[str, bool]:
+    """Find a media file, searching common directories if not found at original path.
+    
+    Args:
+        original_path: The resolved absolute path from markdown
+        filename: Just the filename to search for
+        media_type: "image" or "video"
+    
+    Returns:
+        (found_path, exists): The path to use and whether file exists
+    """
+    if os.path.isfile(original_path):
+        return original_path, True
+    
+    for search_dir in SEARCH_DIRS:
+        candidate = search_dir / filename
+        if candidate.is_file():
+            print(
+                f"[parse_markdown] {media_type.capitalize()} not found at '{original_path}', using '{candidate}' instead",
+                file=sys.stderr
+            )
+            return str(candidate), True
+    
+    print(
+        f"[parse_markdown] WARNING: {media_type.capitalize()} not found: '{original_path}' "
+        f"(also searched {[str(d) for d in SEARCH_DIRS]})",
+        file=sys.stderr
+    )
+    return original_path, False
 
 
 def split_into_blocks(markdown: str) -> list[str]:
@@ -77,6 +144,14 @@ def split_into_blocks(markdown: str) -> list[str]:
                 current_block = []
             continue
 
+        # Horizontal rule (divider) is its own block
+        if re.match(r'^---+$', stripped):
+            if current_block:
+                blocks.append('\n'.join(current_block))
+                current_block = []
+            blocks.append('___DIVIDER___')
+            continue
+
         # Headers, blockquotes are their own blocks
         if stripped.startswith(('#', '>')):
             if current_block:
@@ -105,53 +180,105 @@ def split_into_blocks(markdown: str) -> list[str]:
     return blocks
 
 
-def extract_images_with_block_index(markdown: str, base_path: Path) -> tuple[list[dict], str, int]:
-    """Extract images with their block index position.
+def extract_media_and_dividers(markdown: str, base_path: Path) -> tuple[list[dict], list[dict], str, int]:
+    """Extract media and dividers with their block index positions.
 
     Returns:
-        (image_list, markdown_without_images, total_blocks)
+        (media_list, divider_list, markdown_without_media_and_dividers, total_blocks)
     """
     blocks = split_into_blocks(markdown)
-    images = []
+    media_items = []
+    dividers = []
     clean_blocks = []
 
     img_pattern = re.compile(r'^!\[([^\]]*)\]\(([^)]+)\)$')
+    link_pattern = re.compile(r'^\[([^\]]*)\]\(([^)]+)\)$')
+    html_video_src_pattern = re.compile(r'^<video[^>]*src=["\']([^"\']+)["\'][^>]*>.*</video>$', re.IGNORECASE | re.DOTALL)
+    html_video_source_pattern = re.compile(r'^<video[^>]*>.*?<source[^>]*src=["\']([^"\']+)["\'][^>]*>.*</video>$', re.IGNORECASE | re.DOTALL)
 
     for i, block in enumerate(blocks):
-        match = img_pattern.match(block.strip())
-        if match:
-            alt_text = match.group(1)
-            img_path = match.group(2)
+        _ = i  # keep loop shape stable; index not needed directly
+        block_stripped = block.strip()
 
-            # Resolve relative paths
-            if not os.path.isabs(img_path):
-                full_path = str(base_path / img_path)
-            else:
-                full_path = img_path
-
-            # block_index is the index in clean_blocks (without images)
-            # i.e., this image should be inserted after clean_blocks[block_index-1]
+        # Check for divider
+        if block_stripped == '___DIVIDER___':
             block_index = len(clean_blocks)
-
-            # Get context from previous block for reference
             after_text = ""
             if clean_blocks:
                 prev_block = clean_blocks[-1].strip()
-                # Get last line of previous block
+                lines = [l for l in prev_block.split('\n') if l.strip()]
+                after_text = lines[-1][:80] if lines else ""
+            dividers.append({
+                "block_index": block_index,
+                "after_text": after_text
+            })
+            continue
+
+        media_path = None
+        alt_text = ""
+
+        img_match = img_pattern.match(block_stripped)
+        if img_match:
+            alt_text = img_match.group(1)
+            media_path = img_match.group(2)
+        else:
+            html_video_match = html_video_src_pattern.match(block_stripped)
+            if html_video_match:
+                media_path = html_video_match.group(1)
+            else:
+                html_video_source_match = html_video_source_pattern.match(block_stripped)
+                if html_video_source_match:
+                    media_path = html_video_source_match.group(1)
+                else:
+                    link_match = link_pattern.match(block_stripped)
+                    if link_match:
+                        candidate = link_match.group(2)
+                        if media_type_for_path(candidate) == "video":
+                            alt_text = link_match.group(1)
+                            media_path = candidate
+
+        if media_path is not None:
+            media_type = media_type_for_path(media_path)
+            decoded_path = urllib.parse.unquote(media_path)
+
+            if is_remote_path(decoded_path):
+                full_path = decoded_path
+                exists = False
+                print(
+                    f"[parse_markdown] WARNING: Remote {media_type} URL not uploadable directly: '{decoded_path}'",
+                    file=sys.stderr
+                )
+            else:
+                if not os.path.isabs(decoded_path):
+                    resolved_path = str(base_path / decoded_path)
+                else:
+                    resolved_path = decoded_path
+
+                filename = os.path.basename(decoded_path)
+                full_path, exists = find_media_file(resolved_path, filename, media_type)
+
+            block_index = len(clean_blocks)
+
+            after_text = ""
+            if clean_blocks:
+                prev_block = clean_blocks[-1].strip()
                 lines = [l for l in prev_block.split('\n') if l.strip()]
                 after_text = lines[-1][:80] if lines else ""
 
-            images.append({
+            media_items.append({
+                "type": media_type,
                 "path": full_path,
+                "original_path": decoded_path if is_remote_path(decoded_path) else resolved_path,
+                "exists": exists,
                 "alt": alt_text,
                 "block_index": block_index,
-                "after_text": after_text  # Keep for reference/debugging
+                "after_text": after_text
             })
         else:
             clean_blocks.append(block)
 
     clean_markdown = '\n\n'.join(clean_blocks)
-    return images, clean_markdown, len(clean_blocks)
+    return media_items, dividers, clean_markdown, len(clean_blocks)
 
 
 def extract_title(markdown: str) -> tuple[str, str]:
@@ -258,29 +385,57 @@ def parse_markdown_file(filepath: str) -> dict:
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
+    # Skip YAML frontmatter if present
+    if content.startswith('---'):
+        end_marker = content.find('---', 3)
+        if end_marker != -1:
+            content = content[end_marker + 3:].strip()
+
     # Extract title first (and remove H1 from markdown)
     title, content = extract_title(content)
 
-    # Extract images with block indices
-    images, clean_markdown, total_blocks = extract_images_with_block_index(content, base_path)
+    # Extract media and dividers with block indices
+    media_items, dividers, clean_markdown, total_blocks = extract_media_and_dividers(content, base_path)
 
     # Convert to HTML
     html = markdown_to_html(clean_markdown)
 
-    # Separate cover image from content images
-    cover_image = images[0]["path"] if images else None
-    content_images = images[1:] if len(images) > 1 else []
+    cover_idx = next((idx for idx, item in enumerate(media_items) if item["type"] == "image"), None)
+    if cover_idx is not None:
+        cover_image = media_items[cover_idx]["path"]
+        cover_exists = media_items[cover_idx]["exists"]
+    else:
+        cover_image = None
+        cover_exists = True
 
-    # Adjust block_index for content images (subtract 1 since cover image is removed)
-    # The first content image's block_index was calculated including cover image's position
+    if cover_idx is None:
+        content_media = media_items
+    else:
+        content_media = [item for idx, item in enumerate(media_items) if idx != cover_idx]
+
+    content_images = [item for item in content_media if item["type"] == "image"]
+    content_videos = [item for item in content_media if item["type"] == "video"]
+
+    missing_media = [item for item in media_items if not item["exists"]]
+    missing_images = [item for item in media_items if item["type"] == "image" and not item["exists"]]
+    missing_videos = [item for item in media_items if item["type"] == "video" and not item["exists"]]
+    if missing_media:
+        print(f"[parse_markdown] WARNING: {len(missing_media)} media file(s) not found", file=sys.stderr)
 
     return {
         "title": title,
         "cover_image": cover_image,
+        "cover_exists": cover_exists,
+        "content_media": content_media,
         "content_images": content_images,
+        "content_videos": content_videos,
+        "dividers": dividers,
         "html": html,
         "total_blocks": total_blocks,
-        "source_file": str(path.absolute())
+        "source_file": str(path.absolute()),
+        "missing_media": len(missing_media),
+        "missing_images": len(missing_images),
+        "missing_videos": len(missing_videos)
     }
 
 

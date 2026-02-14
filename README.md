@@ -1,313 +1,73 @@
-# X Article Publisher Skill
+# X Article Publisher Skill (Feishu + Video + Persistent Login)
 
-[English](README.md) | [中文](README_CN.md)
+> Publish Feishu or local Markdown to X Articles drafts with full media support (images + videos) and a persistent logged-in browser profile.
 
-> Publish Markdown articles to X (Twitter) Articles with one command. Say goodbye to tedious rich text editing.
+## Why this fork
 
-**v1.1.0** — Now with block-index positioning for precise image placement
+1. **Video support end-to-end**
+- Handles both images and videos in article body.
+- Adds missing Feishu video download handling on top of `feishu2md`.
 
----
+2. **Persistent X login session**
+- Uses a dedicated persistent browser profile.
+- Avoids repeated high-risk logins.
 
-## The Problem
-
-If you're used to writing in Markdown, publishing to X Articles is a **painful process**:
-
-| Pain Point | Description |
-|------------|-------------|
-| **Format Loss** | Copy from Markdown editor → Paste to X → All formatting gone |
-| **Manual Formatting** | Set each H2, bold, link manually — 15-20 min per article |
-| **Tedious Image Upload** | 5 clicks per image: Add media → Media → Add photo → Select → Wait |
-| **Position Errors** | Hard to remember where each image should go |
-
-### Time Comparison
-
-| Task | Manual | With This Skill |
-|------|--------|-----------------|
-| Format conversion | 15-20 min | 0 (automatic) |
-| Cover image | 1-2 min | 10 sec |
-| 5 content images | 5-10 min | 1 min |
-| **Total** | **20-30 min** | **2-3 min** |
-
-**10x efficiency improvement**
-
----
-
-## The Solution
-
-This skill automates the entire publishing workflow:
-
-```
-Markdown File
-     ↓ Python parsing
-Structured Data (title, images with block_index, HTML)
-     ↓ Playwright MCP
-X Articles Editor (browser automation)
-     ↓
-Draft Saved (never auto-publishes)
-```
-
-### Key Features
-
-- **Rich Text Paste**: Convert Markdown to HTML, paste via clipboard — all formatting preserved
-- **Block-Index Positioning** (v1.1): Precise image placement using element indices, not text matching
-- **Reverse Insertion**: Insert images from highest to lowest index to avoid position shifts
-- **Smart Wait Strategy**: Conditions return immediately when met, no wasted wait time
-- **Safe by Design**: Only saves as draft, never publishes automatically
-
----
-
-## What's New in v1.1.0
-
-| Feature | Before | After |
-|---------|--------|-------|
-| Image positioning | Text matching (fragile) | Block index (precise) |
-| Insertion order | Sequential | Reverse (high→low) |
-| Wait behavior | Fixed delay | Immediate return on condition |
-
-### Why Block-Index?
-
-Previously, images were positioned by matching surrounding text — this failed when:
-- Multiple paragraphs had similar content
-- Text was too short to be unique
-
-Now, each image has a `block_index` indicating exactly which block element it follows. This is deterministic and reliable.
-
----
+3. **One-pass workflow**
+- Feishu URL: download markdown (with videos) -> parse -> upload to X draft.
+- Local markdown path: skip download -> parse -> upload to X draft.
+- Draft-only by default (no auto publish).
 
 ## Requirements
 
-| Requirement | Details |
-|-------------|---------|
-| Claude Code | [claude.ai/code](https://claude.ai/code) |
-| Playwright MCP | Browser automation |
-| X Premium Plus | Required for Articles feature |
-| Python 3.9+ | With dependencies below |
-| macOS | Currently macOS only |
+- X Premium Plus (Articles enabled)
+- Playwright MCP
+- Python 3.9+
+- `feishu2md` for Feishu source mode
+- macOS deps: `pip install Pillow pyobjc-framework-Cocoa`
+- Windows deps: `pip install Pillow pywin32 clip-util`
+
+## Install
 
 ```bash
-pip install Pillow pyobjc-framework-Cocoa
+git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
+cp -r x-article-publisher-skill/skills/x-article-publisher "$CODEX_HOME/skills/"
 ```
 
----
-
-## Installation
-
-### Method 1: Git Clone (Recommended)
-
-```bash
-git clone https://github.com/wshuyi/x-article-publisher-skill.git
-cp -r x-article-publisher-skill/skills/x-article-publisher ~/.claude/skills/
-```
-
-### Method 2: Plugin Marketplace
-
-```
-/plugin marketplace add wshuyi/x-article-publisher-skill
-/plugin install x-article-publisher@wshuyi/x-article-publisher-skill
-```
-
----
+`$CODEX_HOME` is typically `~/.codex`.
 
 ## Usage
 
-### Natural Language
+- Feishu source:
 
-```
-Publish /path/to/article.md to X
-```
-
-```
-Help me post this article to X Articles: ~/Documents/my-post.md
+```text
+Publish this Feishu doc to X draft: https://aiwarts101.feishu.cn/docx/...
 ```
 
-### Skill Command
+- Local markdown source:
 
-```
-/x-article-publisher /path/to/article.md
-```
-
----
-
-## Workflow Steps
-
-```
-[1/7] Parse Markdown...
-      → Extract title, cover image, content images with block_index
-      → Convert to HTML, count total blocks
-
-[2/7] Open X Articles editor...
-      → Navigate to x.com/compose/articles
-
-[3/7] Upload cover image...
-      → First image becomes cover
-
-[4/7] Fill title...
-      → H1 used as title (not included in body)
-
-[5/7] Paste article content...
-      → Rich text via clipboard
-      → All formatting preserved
-
-[6/7] Insert content images (reverse order)...
-      → Sort by block_index descending
-      → Click block element at index → Paste image
-      → Wait for upload (returns immediately when done)
-
-[7/7] Save draft...
-      → ✅ Review and publish manually
+```text
+Publish /path/to/article.md to X draft
 ```
 
----
+## Repository layout
 
-## Supported Markdown
-
-| Syntax | Result |
-|--------|--------|
-| `# H1` | Article title (extracted, not in body) |
-| `## H2` | Section headers |
-| `**bold**` | **Bold text** |
-| `*italic*` | *Italic text* |
-| `[text](url)` | Hyperlinks |
-| `> quote` | Blockquotes |
-| `- item` | Unordered lists |
-| `1. item` | Ordered lists |
-| `![](img.jpg)` | Images (first = cover) |
-
----
-
-## Example
-
-### Input: `article.md`
-
-```markdown
-# 5 AI Tools Worth Watching in 2024
-
-![cover](./images/cover.jpg)
-
-AI tools exploded in 2024. Here are 5 worth your attention.
-
-## 1. Claude: Best Conversational AI
-
-**Claude** by Anthropic excels at long-context understanding.
-
-> Claude's context window reaches 200K tokens.
-
-![claude-demo](./images/claude-demo.png)
-
-## 2. Midjourney: AI Art Leader
-
-[Midjourney](https://midjourney.com) is the most popular AI art tool.
-
-![midjourney](./images/midjourney.jpg)
-```
-
-### Parsed Output (JSON)
-
-```json
-{
-  "title": "5 AI Tools Worth Watching in 2024",
-  "cover_image": "./images/cover.jpg",
-  "content_images": [
-    {"path": "./images/claude-demo.png", "block_index": 4},
-    {"path": "./images/midjourney.jpg", "block_index": 6}
-  ],
-  "total_blocks": 7
-}
-```
-
-### Insertion Order
-
-Images inserted in reverse: `block_index=6` first, then `block_index=4`.
-
-### Result
-
-- Cover: `cover.jpg` uploaded
-- Title: "5 AI Tools Worth Watching in 2024"
-- Content: Rich text with H2, bold, quotes, links
-- Images: Inserted at precise positions via block index
-- Status: **Draft saved** (ready for manual review)
-
----
-
-## Project Structure
-
-```
+```text
 x-article-publisher-skill/
-├── .claude-plugin/
-│   └── plugin.json              # Plugin config
-├── skills/
-│   └── x-article-publisher/
-│       ├── SKILL.md             # Skill instructions
-│       └── scripts/
-│           ├── parse_markdown.py    # Extracts block_index
-│           └── copy_to_clipboard.py
-├── docs/
-│   └── GUIDE.md                 # Detailed guide
-├── README.md                    # This file
-├── README_CN.md                 # Chinese version
-└── LICENSE
+├── .claude-plugin/plugin.json
+├── docs/GUIDE.md
+├── skills/x-article-publisher/
+│   ├── SKILL.md
+│   └── scripts/
+│       ├── copy_to_clipboard.py
+│       ├── parse_markdown.py
+│       ├── prepare_article_source.py
+│       ├── open_x_articles_browser.sh
+│       └── table_to_image.py
+├── README.md
+└── README_CN.md
 ```
 
----
+## Credits
 
-## FAQ
-
-**Q: Why Premium Plus?**
-A: X Articles is exclusive to Premium Plus subscribers.
-
-**Q: Windows/Linux support?**
-A: Currently macOS only. PRs welcome for cross-platform clipboard support.
-
-**Q: Image upload failed?**
-A: Check: valid path, supported format (jpg/png/gif/webp), stable network.
-
-**Q: Can I publish to multiple accounts?**
-A: Not automatically. Switch accounts in browser manually before running.
-
-**Q: Why insert images in reverse order?**
-A: Each inserted image shifts subsequent block indices. Inserting from highest to lowest ensures earlier indices remain valid.
-
-**Q: What if text matching was used before?**
-A: v1.1 replaces text matching with `block_index`. The `after_text` field is kept for debugging but not used for positioning.
-
-**Q: Why does wait return immediately sometimes?**
-A: `browser_wait_for textGone="..."` returns as soon as the text disappears. The `time` parameter is just a maximum, not a fixed delay.
-
----
-
-## Documentation
-
-- [Detailed Usage Guide](docs/GUIDE.md) — Complete documentation with examples
-
----
-
-## Changelog
-
-### v1.1.0 (2025-12)
-- **Block-index positioning**: Replace text matching with precise element indices
-- **Reverse insertion order**: Prevent index shifts when inserting multiple images
-- **Optimized wait strategy**: Return immediately when upload completes
-- **H1 title handling**: H1 extracted as title, not included in body HTML
-
-### v1.0.0 (2025-12)
-- Initial release
-- Rich text paste via clipboard
-- Cover + content image support
-- Draft-only publishing
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE)
-
-## Author
-
-[wshuyi](https://github.com/wshuyi)
-
----
-
-## Contributing
-
-- **Issues**: Report bugs or request features
-- **PRs**: Welcome! Especially for Windows/Linux support
+- Feishu extraction baseline: [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
+- Initial skill packaging inspiration: [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)

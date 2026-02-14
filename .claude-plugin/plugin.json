@@ -1,22 +1,26 @@
 {
   "name": "x-article-publisher",
-  "version": "1.1.0",
-  "description": "Publish Markdown articles to X (Twitter) Articles with block-index positioning and rich text formatting",
+  "version": "2.0.0",
+  "description": "Publish Feishu/local Markdown to X Articles drafts with image+video support and persistent X login profile",
   "author": {
-    "name": "wshuyi"
+    "name": "LearnPrompt"
   },
-  "repository": "https://github.com/wshuyi/x-article-publisher-skill",
+  "repository": "https://github.com/LearnPrompt/x-article-publisher-skill",
   "license": "MIT",
   "keywords": [
     "x",
     "twitter",
     "articles",
     "markdown",
-    "publishing"
+    "publishing",
+    "feishu",
+    "video",
+    "automation"
   ],
   "dependencies": {
     "mcp": ["playwright"],
-    "python": ["Pillow", "pyobjc-framework-Cocoa"]
+    "python": ["Pillow", "pyobjc-framework-Cocoa"],
+    "binary": ["feishu2md"]
   },
-  "platforms": ["macos"]
+  "platforms": ["macos", "windows"]
 }
