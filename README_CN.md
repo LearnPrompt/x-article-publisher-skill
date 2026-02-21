@@ -64,6 +64,24 @@ bash x-article-publisher-skill/install.sh
 5. 按位置插入图片与视频
 6. 保存为草稿（不自动发布）
 
+## 实战经验（2026-02-21）
+
+1. **先确认登录态，再进发布流程**
+- 持久化 profile 里要看到 `auth_token/ct0` 才算已登录。
+- 如果 `https://x.com/compose/articles` 显示 `Page not found / X` 且有 `Log in`，说明当前 profile 仍未登录。
+
+2. **媒体文件必须在 Playwright 允许目录内**
+- 若上传时报 `File access denied ... outside allowed roots`，把下载目录放到工作区（例如 `~/Downloads`）再上传。
+- 本项目默认工作目录建议统一在 `~/Downloads` 下执行。
+
+3. **图片按位置插入要做“逆序 + 文本定位”**
+- 以 `block_index` 从大到小插入，避免前插导致后续位置偏移。
+- 用 `after_text` 做段落定位，定位不到时用更短关键词兜底。
+
+4. **避免重复插图**
+- 每次重跑建议新建草稿，不要在同一草稿上重复执行。
+- 若中途重试，先检查已有媒体数量，再补插缺失项。
+
 ## 仓库结构
 
 ```text

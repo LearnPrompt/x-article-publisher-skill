@@ -76,3 +76,28 @@ This profile is isolated from your main Chrome profile and minimizes repeated lo
 
 - Check parse output fields: `missing_media`, `missing_images`, `missing_videos`
 - Confirm files exist under downloaded folder `static/`
+
+## Runbook Notes (2026-02-21)
+
+### 1) Login-state gate before publishing
+
+- Check cookies in persistent profile first.
+- If `auth_token` and `ct0` are missing, stop automation and request manual login.
+- Symptom of missing login: `https://x.com/compose/articles` shows `Page not found / X` with `Log in`.
+
+### 2) Upload root restriction
+
+- `playwright-cli upload` may reject files outside allowed roots.
+- Symptom: `File access denied ... outside allowed roots`.
+- Mitigation: copy Feishu download output into the active workspace (for example `~/Downloads/...`) before upload.
+
+### 3) Media insertion reliability
+
+- Insert media in descending `block_index` order.
+- Primary locator: `after_text`.
+- Fallback locator: shortened keyword extracted from `after_text` if exact match fails.
+
+### 4) Re-run safety
+
+- Prefer creating a fresh draft when re-running the same article.
+- If reusing a draft, record inserted images and skip existing ones to avoid duplicates.
