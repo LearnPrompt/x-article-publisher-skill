@@ -110,8 +110,9 @@ def split_into_blocks(markdown: str) -> list[str]:
     code_block_lines = []
 
     lines = markdown.split('\n')
-
-    for line in lines:
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         stripped = line.strip()
 
         # Handle code block boundaries
@@ -130,18 +131,37 @@ def split_into_blocks(markdown: str) -> list[str]:
                     blocks.append('\n'.join(current_block))
                     current_block = []
                 in_code_block = True
+            i += 1
             continue
 
         # If inside code block, collect ALL lines (including empty lines)
         if in_code_block:
             code_block_lines.append(line)
+            i += 1
             continue
 
-        # Empty line signals end of block
+        # Group contiguous blockquote lines as one block to preserve multiline callouts.
+        if stripped.startswith('>'):
+            if current_block:
+                blocks.append('\n'.join(current_block))
+                current_block = []
+            quote_lines = []
+            while i < len(lines):
+                q_line = lines[i]
+                if not q_line.strip().startswith('>'):
+                    break
+                quote_lines.append(q_line.strip())
+                i += 1
+            if quote_lines:
+                blocks.append('\n'.join(quote_lines))
+            continue
+
+        # Empty line signals end of paragraph block
         if not stripped:
             if current_block:
                 blocks.append('\n'.join(current_block))
                 current_block = []
+            i += 1
             continue
 
         # Horizontal rule (divider) is its own block
@@ -150,14 +170,16 @@ def split_into_blocks(markdown: str) -> list[str]:
                 blocks.append('\n'.join(current_block))
                 current_block = []
             blocks.append('___DIVIDER___')
+            i += 1
             continue
 
-        # Headers, blockquotes are their own blocks
-        if stripped.startswith(('#', '>')):
+        # Headers are their own blocks
+        if stripped.startswith('#'):
             if current_block:
                 blocks.append('\n'.join(current_block))
                 current_block = []
             blocks.append(stripped)
+            i += 1
             continue
 
         # Image on its own line is its own block
@@ -166,9 +188,11 @@ def split_into_blocks(markdown: str) -> list[str]:
                 blocks.append('\n'.join(current_block))
                 current_block = []
             blocks.append(stripped)
+            i += 1
             continue
 
         current_block.append(line)
+        i += 1
 
     if current_block:
         blocks.append('\n'.join(current_block))
@@ -346,8 +370,38 @@ def markdown_to_html(markdown: str) -> str:
     # Links
     html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', html)
 
-    # Blockquotes (regular markdown blockquotes, not code blocks)
-    html = re.sub(r'^> (.+)$', r'<blockquote>\1</blockquote>', html, flags=re.MULTILINE)
+    # Blockquotes / callouts:
+    # - Merge contiguous quote lines into one blockquote
+    # - Drop admonition markers like [!TIP], [!NOTE], etc.
+    # - Preserve multiline content with <br>
+    callout_marker = re.compile(r'^\s*\[![A-Z]+\]\s*$', re.IGNORECASE)
+
+    def convert_blockquote_group(match):
+        group = match.group(0)
+        raw_lines = group.splitlines()
+        lines = []
+        for raw in raw_lines:
+            # Remove leading ">" and one optional space
+            text = re.sub(r'^\s*>\s?', '', raw).rstrip()
+            if callout_marker.match(text):
+                continue
+            lines.append(text)
+
+        # Trim empty lines on both ends, keep internal blank lines
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        while lines and not lines[-1].strip():
+            lines.pop()
+
+        if not lines:
+            return ""
+        return f"<blockquote>{'<br>'.join(lines)}</blockquote>"
+
+    html = re.sub(
+        r'(?m)(?:^\s*>.*(?:\n|$))+',
+        convert_blockquote_group,
+        html,
+    )
 
     # Unordered lists
     html = re.sub(r'^- (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
