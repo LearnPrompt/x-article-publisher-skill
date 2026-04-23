@@ -75,14 +75,20 @@ bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
 
 | Mode | Required |
 |---|---|
-| Feishu URL -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, `feishu2md`, Feishu OpenAPI credentials, one-time X login |
+| Feishu URL -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, `feishu2md`, Feishu app credentials (App ID / App Secret), one-time X login |
 | Local Markdown -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, one-time X login |
 
-Configure Feishu credentials for Feishu URL mode:
+Configure Feishu app credentials for Feishu URL mode:
 
 ```bash
 feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
 ```
+
+What this means:
+- The App ID and App Secret come from a Feishu/Lark custom app that you create in the Feishu developer console.
+- They are not your Feishu login password.
+- `feishu2md` uses them to call Feishu APIs and download the document, images, and files/videos that the shared document allows the app to read.
+- The app needs permissions for document read and media/file download. Wiki links also need wiki read permission.
 
 Environment variables are also supported:
 
@@ -155,7 +161,7 @@ Full framework: [docs/GUIDE.md](docs/GUIDE.md)
 - X Articles requires an account with Articles access, usually X Premium Plus.
 - First use of the persistent profile may still require manual X login or security verification.
 - Remote image/video URLs are detected but not treated as reliable uploadable local files. Keep media local for deterministic uploads.
-- Feishu URL mode depends on Feishu OpenAPI permissions, especially document read, media download, and wiki read permissions for `/wiki/` links.
+- Feishu URL mode depends on a Feishu custom app with document read, media download, and wiki read permissions for `/wiki/` links.
 - Large videos can take minutes to process on X; interruption may leave a partial draft.
 
 ---
@@ -189,7 +195,6 @@ x-article-publisher-skill/
 
 - Feishu Markdown baseline: [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
 - Skill packaging inspiration: [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
-- README structure inspired by [alchaincyf/nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
 
 ## License
 

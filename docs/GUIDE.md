@@ -77,7 +77,7 @@ bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
 bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh feishu
 ```
 
-The doctor script checks Python, clipboard dependencies, Playwright CLI availability, `feishu2md`, Feishu credentials, and the X persistent profile path.
+The doctor script checks Python, clipboard dependencies, Playwright CLI availability, `feishu2md`, Feishu app credentials, and the X persistent profile path.
 
 ---
 
@@ -175,7 +175,9 @@ Large videos can take minutes. Keep waiting if the media block is visible and no
 
 ## 8. Troubleshooting
 
-### Feishu credentials missing
+### Feishu app credentials missing
+
+Feishu app credentials mean the App ID and App Secret of a Feishu/Lark custom app. They are used by `feishu2md` and by this skill's video recovery step to call Feishu APIs. They are not user login credentials.
 
 Run:
 

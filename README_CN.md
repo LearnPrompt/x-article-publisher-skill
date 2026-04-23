@@ -75,14 +75,20 @@ bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
 
 | 模式 | 需要准备 |
 |---|---|
-| 飞书链接 -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、`feishu2md`、飞书 OpenAPI 凭据、一次 X 登录 |
+| 飞书链接 -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、`feishu2md`、飞书自建应用凭据（App ID / App Secret）、一次 X 登录 |
 | 本地 Markdown -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、一次 X 登录 |
 
-飞书链接模式需要配置凭据：
+飞书链接模式需要配置飞书自建应用凭据：
 
 ```bash
 feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
 ```
+
+这是什么意思：
+- App ID 和 App Secret 来自你在飞书开放平台/开发者后台创建的“企业自建应用”。
+- 它们不是你的飞书登录密码。
+- `feishu2md` 用它们调用飞书接口，把文档、图片、文件/视频下载到本地。
+- 这个应用需要开通文档读取、素材/文件下载权限；如果要处理 Wiki 链接，还需要 Wiki 读取权限。
 
 也可以用环境变量：
 
@@ -155,7 +161,7 @@ Publish /path/to/article.md to X draft
 - X Articles 需要账号拥有 Articles 权限，通常需要 X Premium Plus。
 - 第一次使用持久化 profile 时，仍可能需要手动完成 X 登录或安全验证。
 - 远程图片/视频 URL 会被识别，但不作为稳定上传路径；要稳定上传，请把媒体文件放在本地。
-- 飞书链接模式依赖飞书 OpenAPI 权限，尤其是文档读取、素材下载、Wiki 读取权限。
+- 飞书链接模式依赖一个飞书自建应用，并且这个应用要开通文档读取、素材下载、Wiki 读取等权限。
 - 大视频在 X 上可能需要几分钟处理，中途打断可能留下半成品草稿。
 
 ---
@@ -189,7 +195,6 @@ x-article-publisher-skill/
 
 - 飞书 Markdown 下载基础能力来自 [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
 - Skill 打包形态参考 [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
-- README 组织方式参考 [alchaincyf/nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
 
 ## 许可证
 
