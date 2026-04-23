@@ -3,8 +3,8 @@
 Prepare article source for X publishing.
 
 Modes:
-1) Feishu/Lark URL -> download markdown via feishu2md, fetch video file blocks, append <video> tags
-2) Local markdown path -> passthrough
+1) Feishu/Lark URL -> download markdown via feishu2md, fetch video file blocks, insert <video> tags near anchors
+2) Local markdown path -> passthrough; local image/video paths are parsed later by parse_markdown.py
 """
 
 import argparse

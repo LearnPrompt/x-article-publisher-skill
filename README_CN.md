@@ -20,11 +20,11 @@
 ## 依赖要求
 
 - X Premium Plus（需要 Articles 功能）
-- Playwright MCP
 - Python 3.9+
-- `feishu2md`（用于飞书下载）
-- macOS 依赖：`pip install Pillow pyobjc-framework-Cocoa`
-- Windows 依赖：`pip install Pillow pywin32 clip-util`
+- Node.js/npm（用于 `npx @playwright/mcp` 浏览器自动化）
+- Python 依赖：见 `skills/x-article-publisher/requirements.txt`
+- `feishu2md`（仅飞书链接模式需要；本地 Markdown 模式不需要）
+- 飞书 OpenAPI 凭据（仅飞书链接模式需要）
 
 ## 安装
 
@@ -41,6 +41,32 @@ bash x-article-publisher-skill/install.sh
 
 如果没设置 `CODEX_HOME`，默认是 `~/.codex`。
 
+安装脚本会做这些事：
+- 安装 skill 到 `$CODEX_HOME/skills/x-article-publisher`
+- 通过 `pip --user` 安装 Python 依赖
+- 尝试预热 `@playwright/mcp` 的 `playwright-cli`
+- 如果本机有 Homebrew 且缺少 `feishu2md`，尝试执行 `brew install feishu2md`
+
+不想自动安装依赖时：
+
+```bash
+INSTALL_DEPS=0 bash x-article-publisher-skill/install.sh
+```
+
+安装后执行环境体检：
+
+```bash
+bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
+```
+
+飞书链接模式还需要配置凭据：
+
+```bash
+feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
+```
+
+也可以用环境变量 `FEISHU_APP_ID` / `FEISHU_APP_SECRET`。
+
 ## 用法
 
 ### 方式 1：飞书链接
@@ -54,6 +80,15 @@ bash x-article-publisher-skill/install.sh
 ```text
 把 /path/to/article.md 发布到 X 草稿
 ```
+
+本地 Markdown 支持：
+- 本地图片：`![alt](./static/image.png)`
+- 本地视频：`<video src="./static/clip.mp4"></video>`、`<video><source src="./static/clip.mp4"></video>` 或 `[video](./static/clip.mp4)`
+- 相对路径会按 Markdown 文件所在目录解析
+
+当前边界：
+- 远程图片/视频 URL 会被标记为不可直接上传；图床 URL 是否能被 X 直接消费不保证，暂不作为主流程支持。
+- 飞书链接模式是主路径：先下载到本地 Markdown，再按本地媒体文件上传。
 
 ## 工作流（简版）
 
@@ -111,8 +146,10 @@ x-article-publisher-skill/
 ├── docs/GUIDE.md
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
+│   ├── requirements.txt
 │   └── scripts/
 │       ├── copy_to_clipboard.py
+│       ├── doctor.sh
 │       ├── parse_markdown.py
 │       ├── prepare_article_source.py
 │       ├── open_x_articles_browser.sh

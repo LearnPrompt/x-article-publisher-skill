@@ -1,0 +1,4 @@
+Pillow>=10.0
+pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
+pywin32>=306; sys_platform == "win32"
+clip-util>=0.2.0; sys_platform == "win32"

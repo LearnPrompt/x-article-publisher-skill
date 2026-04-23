@@ -13,4 +13,17 @@ fi
 
 mkdir -p "$PROFILE"
 
-exec "$PWCLI" open "$URL" --headed --persistent --profile "$PROFILE" "$@"
+if [[ -x "$PWCLI" ]]; then
+  exec "$PWCLI" open "$URL" --headed --persistent --profile "$PROFILE" "$@"
+fi
+
+if command -v playwright-cli >/dev/null 2>&1; then
+  exec playwright-cli open "$URL" --headed --persistent --profile "$PROFILE" "$@"
+fi
+
+if command -v npx >/dev/null 2>&1; then
+  exec npx --yes --package @playwright/mcp playwright-cli open "$URL" --headed --persistent --profile "$PROFILE" "$@"
+fi
+
+echo "Error: Playwright CLI not found. Install Node.js/npm, then run: npx --yes --package @playwright/mcp playwright-cli install" >&2
+exit 1

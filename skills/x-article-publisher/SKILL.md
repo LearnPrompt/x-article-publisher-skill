@@ -10,13 +10,17 @@ Publish Markdown content to X (Twitter) Articles editor, preserving formatting w
 
 ## Prerequisites
 
-- Playwright MCP for browser automation
+- Playwright MCP for browser automation (`playwright-cli` or `npx --yes --package @playwright/mcp playwright-cli`)
 - User logged into X with Premium Plus subscription
 - Dedicated persistent browser profile (recommended) to avoid repeated login
-- Python 3.9+ with dependencies:
-  - macOS: `pip install Pillow pyobjc-framework-Cocoa`
-  - Windows: `pip install Pillow pywin32 clip-util`
+- Python 3.9+ with dependencies from `requirements.txt`
+- For Feishu URL mode: `feishu2md` and either `FEISHU_APP_ID`/`FEISHU_APP_SECRET` or `feishu2md config`
 - For Mermaid diagrams: `npm install -g @mermaid-js/mermaid-cli`
+
+Environment check:
+```bash
+bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
+```
 
 ## Scripts
 
@@ -54,11 +58,18 @@ bash ~/.codex/skills/x-article-publisher/scripts/open_x_articles_browser.sh
 Defaults:
 - Profile path: `~/.codex/browser-profiles/x-articles`
 - Can override with env var: `X_ARTICLES_PROFILE=/custom/path`
+- Uses Codex Playwright wrapper when present, otherwise falls back to `playwright-cli` or `npx @playwright/mcp`
+
+### doctor.sh
+Check runtime dependencies:
+```bash
+bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh [all|feishu|local]
+```
 
 ### prepare_article_source.py
 Auto-route source input:
 - Feishu/Lark URL -> download to local markdown (with video fetch)
-- Local markdown path -> pass through directly
+- Local markdown path -> pass through directly; local image/video paths are parsed by `parse_markdown.py`
 
 ```bash
 python ~/.codex/skills/x-article-publisher/scripts/prepare_article_source.py "<source>"
@@ -142,6 +153,13 @@ Two trigger modes are supported:
    Input is a local `.md` / `.markdown` file path
    - Run `prepare_article_source.py "<path/to/file.md>"`
    - It returns the original file directly (no download step)
+   - Supported local media:
+     - `![alt](./static/image.png)`
+     - `<video src="./static/clip.mp4"></video>`
+     - `<video><source src="./static/clip.mp4"></video>`
+     - `[video](./static/clip.mp4)`
+   - Relative paths are resolved from the Markdown file directory
+   - Remote `http(s)` media URLs are reported as not uploadable local files and are outside the reliable upload path
 
 ## Why feishu2md Misses Videos by Default
 

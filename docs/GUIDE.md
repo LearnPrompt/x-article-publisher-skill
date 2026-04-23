@@ -28,7 +28,46 @@ Input is `.md` / `.markdown` local file path.
 
 Flow:
 1. Skip download
-2. Parse and publish directly
+2. Parse local images and videos from Markdown
+3. Publish directly
+
+Supported local media syntax:
+- Images: `![alt](./static/image.png)`
+- Videos: `<video src="./static/clip.mp4"></video>`
+- Videos: `<video><source src="./static/clip.mp4"></video>`
+- Videos: `[video](./static/clip.mp4)`
+
+Remote `http(s)` media URLs are reported as not uploadable local files. Keep the reliable path as local files next to the Markdown.
+
+## Installation And Environment
+
+Install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
+```
+
+The installer copies the skill, installs Python packages from `requirements.txt`, primes Playwright MCP through `npx`, and tries `brew install feishu2md` when Homebrew is present.
+
+Skip dependency installation:
+
+```bash
+INSTALL_DEPS=0 bash install.sh
+```
+
+Check environment:
+
+```bash
+bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
+```
+
+Feishu URL mode additionally needs credentials:
+
+```bash
+feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
+```
+
+Or set `FEISHU_APP_ID` and `FEISHU_APP_SECRET`.
 
 ## Persistent Login
 
@@ -76,6 +115,7 @@ This profile is isolated from your main Chrome profile and minimizes repeated lo
 
 - Check parse output fields: `missing_media`, `missing_images`, `missing_videos`
 - Confirm files exist under downloaded folder `static/`
+- For local Markdown, keep media paths relative to the Markdown file directory or use absolute local paths
 
 ## Runbook Notes (2026-02-21)
 

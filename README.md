@@ -27,11 +27,11 @@
 ## Requirements
 
 - X Premium Plus (Articles enabled)
-- Playwright MCP
 - Python 3.9+
-- `feishu2md` for Feishu source mode
-- macOS deps: `pip install Pillow pyobjc-framework-Cocoa`
-- Windows deps: `pip install Pillow pywin32 clip-util`
+- Node.js/npm for `npx @playwright/mcp` browser automation
+- Python packages listed in `skills/x-article-publisher/requirements.txt`
+- `feishu2md` for Feishu source mode only
+- Feishu OpenAPI credentials for Feishu source mode only
 
 ## Install
 
@@ -48,6 +48,32 @@ bash x-article-publisher-skill/install.sh
 
 `$CODEX_HOME` defaults to `~/.codex` when not set.
 
+The installer:
+- installs the skill to `$CODEX_HOME/skills/x-article-publisher`
+- installs Python dependencies with `pip --user`
+- primes `@playwright/mcp` when `npx` is available
+- installs `feishu2md` with Homebrew when possible
+
+Skip dependency installation:
+
+```bash
+INSTALL_DEPS=0 bash x-article-publisher-skill/install.sh
+```
+
+Check the environment after install:
+
+```bash
+bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
+```
+
+Configure Feishu credentials for Feishu URL mode:
+
+```bash
+feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
+```
+
+Environment variables `FEISHU_APP_ID` / `FEISHU_APP_SECRET` are also supported.
+
 ## Usage
 
 - Feishu source:
@@ -62,6 +88,15 @@ Publish this Feishu doc to X draft: https://aiwarts101.feishu.cn/docx/...
 Publish /path/to/article.md to X draft
 ```
 
+Local Markdown supports:
+- local images: `![alt](./static/image.png)`
+- local videos: `<video src="./static/clip.mp4"></video>`, `<video><source src="./static/clip.mp4"></video>`, or `[video](./static/clip.mp4)`
+- relative media paths resolved from the Markdown file directory
+
+Current boundary:
+- Remote image/video URLs are detected but not treated as uploadable local files. X may or may not consume remote CDN/image-host URLs directly, so this is intentionally outside the main supported path.
+- The primary Feishu path downloads Markdown and media locally first, then uploads local media to X.
+
 ## Repository layout
 
 ```text
@@ -70,8 +105,10 @@ x-article-publisher-skill/
 ├── docs/GUIDE.md
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
+│   ├── requirements.txt
 │   └── scripts/
 │       ├── copy_to_clipboard.py
+│       ├── doctor.sh
 │       ├── parse_markdown.py
 │       ├── prepare_article_source.py
 │       ├── open_x_articles_browser.sh
