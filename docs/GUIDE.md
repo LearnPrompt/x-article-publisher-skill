@@ -69,6 +69,52 @@ npx skills add LearnPrompt/x-article-publisher-skill --skill x-article-publisher
 
 This installs skill files only. It does not install runtime dependencies, so users still need Python packages, Playwright MCP, and `feishu2md` for Feishu mode.
 
+### feishu2md Installation
+
+Feishu URL mode requires `feishu2md`.
+
+Homebrew:
+
+```bash
+brew install feishu2md
+```
+
+Manual:
+1. Download a binary from [Wsine/feishu2md releases](https://github.com/Wsine/feishu2md/releases).
+2. Put `feishu2md` on `PATH`.
+3. Verify with `feishu2md -h`.
+
+References:
+- [feishu2md GitHub README](https://github.com/Wsine/feishu2md)
+- [Homebrew formula: feishu2md](https://formulae.brew.sh/formula/feishu2md)
+
+### Feishu/Lark App Setup
+
+Create a custom app in:
+- Feishu: [open.feishu.cn/app](https://open.feishu.cn/app)
+- Lark: [open.larksuite.com/app](https://open.larksuite.com/app)
+
+Copy its App ID and App Secret, then run:
+
+```bash
+feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
+```
+
+Minimum permissions:
+
+| Permission | Purpose |
+|---|---|
+| `docx:document:readonly` | Read document metadata and blocks |
+| `docs:document.media:download` | Download images/files/videos from docs |
+| `drive:file:readonly` | Read cloud drive files/folders referenced by docs |
+| `wiki:wiki:readonly` | Resolve wiki links |
+
+API references:
+- [Get document basic info](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)
+- [Get document blocks](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list)
+- [Download media](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download)
+- [Get wiki node info](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)
+
 ### Doctor Checks
 
 ```bash
@@ -190,6 +236,12 @@ Or set:
 ```bash
 export FEISHU_APP_ID=<your_app_id>
 export FEISHU_APP_SECRET=<your_app_secret>
+```
+
+Then test a Feishu document export directly:
+
+```bash
+feishu2md dl --dump -o /tmp/feishu2md-test "https://your-domain.feishu.cn/docx/..."
 ```
 
 ### X login expired

@@ -78,6 +78,31 @@ bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
 | Feishu URL -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, `feishu2md`, Feishu app credentials (App ID / App Secret), one-time X login |
 | Local Markdown -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, one-time X login |
 
+### Install feishu2md
+
+`feishu2md` is the upstream Feishu/Lark-to-Markdown exporter used by this skill before video recovery.
+
+macOS or Linux with Homebrew:
+
+```bash
+brew install feishu2md
+```
+
+Manual install:
+- Download the binary from [Wsine/feishu2md releases](https://github.com/Wsine/feishu2md/releases).
+- Put the `feishu2md` executable somewhere on your `PATH`.
+- Verify it works:
+
+```bash
+feishu2md -h
+```
+
+References:
+- [feishu2md GitHub README](https://github.com/Wsine/feishu2md)
+- [Homebrew formula: feishu2md](https://formulae.brew.sh/formula/feishu2md)
+
+### Configure Feishu/Lark App Credentials
+
 Configure Feishu app credentials for Feishu URL mode:
 
 ```bash
@@ -90,11 +115,36 @@ What this means:
 - `feishu2md` uses them to call Feishu APIs and download the document, images, and files/videos that the shared document allows the app to read.
 - The app needs permissions for document read and media/file download. Wiki links also need wiki read permission.
 
+Where to create the app:
+- Feishu: [open.feishu.cn/app](https://open.feishu.cn/app)
+- Lark: [open.larksuite.com/app](https://open.larksuite.com/app)
+
+Minimum permissions to add in the app's permission management page:
+
+| Permission | Why it is needed |
+|---|---|
+| `docx:document:readonly` | Read Feishu Docs content and blocks |
+| `docs:document.media:download` | Download images and file/video assets from Docs |
+| `drive:file:readonly` | Read cloud drive files/folders referenced by the document |
+| `wiki:wiki:readonly` | Required for `/wiki/` links |
+
+Useful official/API references:
+- [Get document basic info](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)
+- [Get document blocks](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list)
+- [Download media](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download)
+- [Get wiki node info](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)
+
 Environment variables are also supported:
 
 ```bash
 export FEISHU_APP_ID=<your_app_id>
 export FEISHU_APP_SECRET=<your_app_secret>
+```
+
+After configuration, you can test `feishu2md` directly:
+
+```bash
+feishu2md dl --dump -o /tmp/feishu2md-test "https://your-domain.feishu.cn/docx/..."
 ```
 
 ---

@@ -69,6 +69,52 @@ npx skills add LearnPrompt/x-article-publisher-skill --skill x-article-publisher
 
 这个方式只安装 skill 文件，不会安装运行依赖。飞书模式仍然需要 Python 依赖、Playwright MCP 和 `feishu2md`。
 
+### 安装 feishu2md
+
+飞书链接模式需要 `feishu2md`。
+
+Homebrew：
+
+```bash
+brew install feishu2md
+```
+
+手动安装：
+1. 从 [Wsine/feishu2md releases](https://github.com/Wsine/feishu2md/releases) 下载对应系统的可执行文件。
+2. 把 `feishu2md` 放到 `PATH`。
+3. 执行 `feishu2md -h` 验证。
+
+参考链接：
+- [feishu2md GitHub README](https://github.com/Wsine/feishu2md)
+- [Homebrew formula: feishu2md](https://formulae.brew.sh/formula/feishu2md)
+
+### 配置飞书/Lark 自建应用
+
+创建自建应用：
+- 飞书：[open.feishu.cn/app](https://open.feishu.cn/app)
+- Lark：[open.larksuite.com/app](https://open.larksuite.com/app)
+
+复制应用的 App ID 和 App Secret，然后执行：
+
+```bash
+feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
+```
+
+建议开通的最小权限：
+
+| 权限 | 用途 |
+|---|---|
+| `docx:document:readonly` | 读取文档基础信息和 block |
+| `docs:document.media:download` | 下载文档里的图片、文件、视频 |
+| `drive:file:readonly` | 读取文档引用到的云空间文件/文件夹 |
+| `wiki:wiki:readonly` | 解析 Wiki 链接 |
+
+相关 API 文档：
+- [获取文档基本信息](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)
+- [获取文档所有块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list)
+- [下载素材](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download)
+- [获取知识空间节点信息](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)
+
 ### 环境检查
 
 ```bash
@@ -188,6 +234,12 @@ feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
 ```bash
 export FEISHU_APP_ID=<your_app_id>
 export FEISHU_APP_SECRET=<your_app_secret>
+```
+
+然后单独测试一次飞书文档导出：
+
+```bash
+feishu2md dl --dump -o /tmp/feishu2md-test "https://your-domain.feishu.cn/docx/..."
 ```
 
 ### X 登录过期

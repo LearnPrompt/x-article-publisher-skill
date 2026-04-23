@@ -78,6 +78,31 @@ bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
 | 飞书链接 -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、`feishu2md`、飞书自建应用凭据（App ID / App Secret）、一次 X 登录 |
 | 本地 Markdown -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、一次 X 登录 |
 
+### 安装 feishu2md
+
+`feishu2md` 是这个 skill 使用的上游“飞书/Lark 转 Markdown”工具。这个 skill 会先用它把飞书文档下载成本地 Markdown，再额外补回视频。
+
+macOS 或 Linux，如果有 Homebrew：
+
+```bash
+brew install feishu2md
+```
+
+手动安装：
+- 到 [Wsine/feishu2md releases](https://github.com/Wsine/feishu2md/releases) 下载对应系统的可执行文件。
+- 把 `feishu2md` 放到 `PATH` 里的目录。
+- 验证是否可用：
+
+```bash
+feishu2md -h
+```
+
+参考链接：
+- [feishu2md GitHub README](https://github.com/Wsine/feishu2md)
+- [Homebrew formula: feishu2md](https://formulae.brew.sh/formula/feishu2md)
+
+### 配置飞书/Lark 自建应用凭据
+
 飞书链接模式需要配置飞书自建应用凭据：
 
 ```bash
@@ -90,11 +115,36 @@ feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
 - `feishu2md` 用它们调用飞书接口，把文档、图片、文件/视频下载到本地。
 - 这个应用需要开通文档读取、素材/文件下载权限；如果要处理 Wiki 链接，还需要 Wiki 读取权限。
 
+在哪里创建应用：
+- 飞书：[open.feishu.cn/app](https://open.feishu.cn/app)
+- Lark：[open.larksuite.com/app](https://open.larksuite.com/app)
+
+建议开通的最小权限：
+
+| 权限 | 用途 |
+|---|---|
+| `docx:document:readonly` | 读取新版飞书文档正文和 block |
+| `docs:document.media:download` | 下载文档里的图片、附件、视频素材 |
+| `drive:file:readonly` | 读取文档引用到的云空间文件/文件夹 |
+| `wiki:wiki:readonly` | 处理 `/wiki/` 链接时需要 |
+
+相关官方/API 文档：
+- [获取文档基本信息](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)
+- [获取文档所有块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list)
+- [下载素材](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download)
+- [获取知识空间节点信息](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)
+
 也可以用环境变量：
 
 ```bash
 export FEISHU_APP_ID=<your_app_id>
 export FEISHU_APP_SECRET=<your_app_secret>
+```
+
+配置完成后，可以先单独测试 `feishu2md`：
+
+```bash
+feishu2md dl --dump -o /tmp/feishu2md-test "https://your-domain.feishu.cn/docx/..."
 ```
 
 ---
