@@ -1,164 +1,196 @@
-# X Article Publisher Skill (Feishu + Video + Persistent Login)
+# X Article Publisher Skill
 
-> 一键把飞书或本地 Markdown 发布到 X Articles 草稿，支持图片和视频，并复用已登录账号会话。
+> 把飞书/Lark 文档或本地 Markdown 发布到 X Articles 草稿，支持图片、视频和持久化登录态。
 
-## 这个版本解决了什么
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Skills](https://img.shields.io/badge/skills.sh-Compatible-green)](https://skills.sh) [![X Articles](https://img.shields.io/badge/X-Articles-black)](https://x.com/compose/articles)
 
-1. **可以插入视频**
-- 不仅处理图片，还会在解析后按位置插入视频媒体块。
-- 针对飞书文档，补齐 `feishu2md` 默认缺失的视频下载流程。
+**这个 skill 的目标很直接：把一篇飞书文章，变成一篇已经排好图文和视频顺序的 X Article 草稿。**
 
-2. **可以复用已登录 X 账号（持久化 profile）**
-- 提供固定浏览器 profile 启动脚本，避免每次重新登录。
-- 与你主 Chrome 日常使用隔离，不会覆盖现有会话。
+它会先把飞书下载成本地 Markdown，补回 `feishu2md` 默认漏掉的视频块，把视频插回原文附近，再打开已经登录过的 X 浏览器 profile，把标题、正文、图片、视频依次放进草稿里。默认只保存草稿，不自动发布。
 
-3. **可以把整个流程跑通**
-- 输入飞书链接：自动下载到本地（含视频）→ 解析 → 上传到 X 草稿。
-- 输入本地 Markdown：跳过下载，直接上传到 X 草稿。
-- 默认只保存草稿，不自动发布。
+**语言 / Languages:** 中文 · [English](README.md)
 
-## 依赖要求
+---
 
-- X Premium Plus（需要 Articles 功能）
-- Python 3.9+
-- Node.js/npm（用于 `npx @playwright/mcp` 浏览器自动化）
-- Python 依赖：见 `skills/x-article-publisher/requirements.txt`
-- `feishu2md`（仅飞书链接模式需要；本地 Markdown 模式不需要）
-- 飞书 OpenAPI 凭据（仅飞书链接模式需要）
+## 它解决什么问题
+
+| 问题 | 解决方式 |
+|---|---|
+| 飞书导出的 Markdown 经常没有视频 | 读取飞书 dump JSON，下载 file/video block，再写回 Markdown |
+| 视频容易全部堆到文章最后 | 用文本锚点和忽略空格匹配，把视频插回接近原文的位置 |
+| 每次登录 X 风险高 | 使用独立持久化浏览器 profile，不复用、不污染你的日常 Chrome profile |
+| 本地 Markdown 也应该能发 | 本地 `.md` 直接解析，不走飞书下载步骤 |
+| X 视频上传容易卡住 | 串行上传视频，每个视频等 `Uploading media...` 消失后再继续 |
+
+---
 
 ## 安装
+
+### 方式 A：完整 Codex 安装，推荐
+
+这个方式会把 skill 安装到 `~/.codex/skills/x-article-publisher`，同时安装 Python 依赖、预热 Playwright MCP，并在有 Homebrew 时尝试安装 `feishu2md`。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
 ```
 
-手动安装方式：
+手动 clone：
 
 ```bash
 git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
 bash x-article-publisher-skill/install.sh
 ```
 
-如果没设置 `CODEX_HOME`，默认是 `~/.codex`。
-
-安装脚本会做这些事：
-- 安装 skill 到 `$CODEX_HOME/skills/x-article-publisher`
-- 通过 `pip --user` 安装 Python 依赖
-- 尝试预热 `@playwright/mcp` 的 `playwright-cli`
-- 如果本机有 Homebrew 且缺少 `feishu2md`，尝试执行 `brew install feishu2md`
-
-不想自动安装依赖时：
+只复制 skill 文件，不自动装依赖：
 
 ```bash
 INSTALL_DEPS=0 bash x-article-publisher-skill/install.sh
 ```
 
-安装后执行环境体检：
+### 方式 B：skills.sh / Claude Code 兼容安装
+
+这个仓库可以被 `skills` CLI 识别：
+
+```bash
+npx skills add LearnPrompt/x-article-publisher-skill --skill x-article-publisher --global --copy --yes --full-depth
+```
+
+注意：`skills add` 只安装 skill 文件，不会自动安装 Python、Playwright、`feishu2md` 这些运行依赖。如果你用的是 Codex，优先使用上面的完整安装脚本。
+
+### 检查环境
 
 ```bash
 bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
 ```
 
-飞书链接模式还需要配置凭据：
+如果只测试本地 Markdown：
+
+```bash
+bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
+```
+
+---
+
+## 需要准备什么
+
+| 模式 | 需要准备 |
+|---|---|
+| 飞书链接 -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、`feishu2md`、飞书 OpenAPI 凭据、一次 X 登录 |
+| 本地 Markdown -> X 草稿 | X Premium Plus、Python 3.9+、Node.js/npm、一次 X 登录 |
+
+飞书链接模式需要配置凭据：
 
 ```bash
 feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
 ```
 
-也可以用环境变量 `FEISHU_APP_ID` / `FEISHU_APP_SECRET`。
+也可以用环境变量：
 
-## 用法
-
-### 方式 1：飞书链接
-
-```text
-把这个飞书链接发布到 X 草稿：https://aiwarts101.feishu.cn/docx/...
+```bash
+export FEISHU_APP_ID=<your_app_id>
+export FEISHU_APP_SECRET=<your_app_secret>
 ```
 
-### 方式 2：本地 Markdown
+---
+
+## 试试看
+
+### 飞书链接
+
+对 agent 说：
+
+```text
+把这个飞书文档发布到 X 草稿：https://your-domain.feishu.cn/docx/...
+```
+
+英文也可以：
+
+```text
+Publish this Feishu doc to X draft: https://your-domain.feishu.cn/docx/...
+```
+
+### 本地 Markdown
 
 ```text
 把 /path/to/article.md 发布到 X 草稿
 ```
 
-本地 Markdown 支持：
-- 本地图片：`![alt](./static/image.png)`
-- 本地视频：`<video src="./static/clip.mp4"></video>`、`<video><source src="./static/clip.mp4"></video>` 或 `[video](./static/clip.mp4)`
-- 相对路径会按 Markdown 文件所在目录解析
+或：
 
-当前边界：
-- 远程图片/视频 URL 会被标记为不可直接上传；图床 URL 是否能被 X 直接消费不保证，暂不作为主流程支持。
-- 飞书链接模式是主路径：先下载到本地 Markdown，再按本地媒体文件上传。
+```text
+Publish /path/to/article.md to X draft
+```
 
-## 工作流（简版）
+本地 Markdown 支持这些媒体写法：
 
-1. 路由输入源（飞书链接 / 本地 Markdown）
-2. 解析标题、封面图、正文 HTML、图片和视频位置
-3. 打开 X Articles 编辑器（持久化 profile）
-4. 上传封面、填写标题、粘贴正文
-5. 按位置插入图片与视频
-6. 保存为草稿（不自动发布）
+```markdown
+![cover](./static/cover.png)
 
-## 实战经验（2026-02-21）
+<video src="./static/demo.mp4"></video>
 
-1. **先确认登录态，再进发布流程**
-- 持久化 profile 里要看到 `auth_token/ct0` 才算已登录。
-- 如果 `https://x.com/compose/articles` 显示 `Page not found / X` 且有 `Log in`，说明当前 profile 仍未登录。
+[video](./static/clip.mp4)
+```
 
-2. **媒体文件必须在 Playwright 允许目录内**
-- 若上传时报 `File access denied ... outside allowed roots`，把下载目录放到工作区（例如 `~/Downloads`）再上传。
-- 本项目默认工作目录建议统一在 `~/Downloads` 下执行。
+相对路径会按 Markdown 文件所在目录解析。
 
-3. **图片按位置插入要做“逆序 + 文本定位”**
-- 以 `block_index` 从大到小插入，避免前插导致后续位置偏移。
-- 用 `after_text` 做段落定位，定位不到时用更短关键词兜底。
+---
 
-4. **避免重复插图**
-- 每次重跑建议新建草稿，不要在同一草稿上重复执行。
-- 若中途重试，先检查已有媒体数量，再补插缺失项。
+## 工作原理
 
-## 实战经验（2026-04-23）
+1. **输入分流**：飞书链接先下载，本地 Markdown 直接进入解析。
+2. **飞书下载**：调用 `feishu2md dl --dump`；`/wiki/` 链接自动加 `--wiki`。
+3. **视频补回**：读取飞书 JSON 里的 file/video block，用 OpenAPI 下载视频，再按文本锚点插回 Markdown。
+4. **Markdown 解析**：提取标题、封面、正文 HTML、图片、视频、分割线和 block 位置。
+5. **持久化 X 浏览器**：默认使用 `~/.codex/browser-profiles/x-articles`。
+6. **组装草稿**：先封面、标题、正文，再按位置倒序插入图片、视频、分割线。
+7. **视频安全策略**：一次只上传一个视频，等 X 的上传遮罩消失后再继续。
 
-1. **飞书 Wiki 链接要走 Wiki 下载模式**
-- `/wiki/...` 链接会映射到底层文档，下载时需要 `feishu2md dl --dump --wiki`。
-- 下载后仍然以生成的 Markdown 为准继续解析，不要直接拿 wiki token 当 docx token。
+完整框架说明：[docs/GUIDE_CN.md](docs/GUIDE_CN.md)
 
-2. **视频必须按锚点写回 Markdown**
-- 飞书 API 返回的视频块不一定出现在 `feishu2md` 的 Markdown 里。
-- 本项目会根据视频块前后的文本锚点插入 `<video src="..."></video>`。
-- 如果锚点匹配失败，不再把视频追加到文末，而是记录错误，避免视频顺序错乱。
+---
 
-3. **0B 视频要重试，不能直接上传**
-- 飞书大视频下载可能出现 0B 文件。
-- 现在会复用非空文件，并对缺失或 0B 文件重新下载。
-- 只有大于 0B 的视频才会进入后续 Markdown 和 X 上传流程。
+## 诚实边界
 
-4. **X 视频上传要逐个等待**
-- 视频上传会出现 `Uploading media...` 全局遮罩，会拦截后续点击。
-- 每个视频上传后必须等遮罩消失，再插入下一个媒体。
-- 78MB 左右的视频可能需要数分钟，看到媒体块存在但仍在上传时不要中断。
+- 这个 skill 只创建 X Article 草稿，不自动发布。
+- X Articles 需要账号拥有 Articles 权限，通常需要 X Premium Plus。
+- 第一次使用持久化 profile 时，仍可能需要手动完成 X 登录或安全验证。
+- 远程图片/视频 URL 会被识别，但不作为稳定上传路径；要稳定上传，请把媒体文件放在本地。
+- 飞书链接模式依赖飞书 OpenAPI 权限，尤其是文档读取、素材下载、Wiki 读取权限。
+- 大视频在 X 上可能需要几分钟处理，中途打断可能留下半成品草稿。
+
+---
 
 ## 仓库结构
 
 ```text
 x-article-publisher-skill/
-├── .claude-plugin/plugin.json
-├── docs/GUIDE.md
+├── install.sh
+├── README.md
+├── README_CN.md
+├── docs/
+│   ├── GUIDE.md
+│   └── GUIDE_CN.md
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
 │   ├── requirements.txt
 │   └── scripts/
 │       ├── copy_to_clipboard.py
 │       ├── doctor.sh
+│       ├── open_x_articles_browser.sh
 │       ├── parse_markdown.py
 │       ├── prepare_article_source.py
-│       ├── open_x_articles_browser.sh
 │       └── table_to_image.py
-├── README.md
-└── README_CN.md
+└── .claude-plugin/plugin.json
 ```
+
+---
 
 ## 致谢
 
-- 飞书下载基础能力来自 [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
-- 项目形态参考 [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
+- 飞书 Markdown 下载基础能力来自 [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
+- Skill 打包形态参考 [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
+- README 组织方式参考 [alchaincyf/nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
+
+## 许可证
+
+MIT。可以使用、修改，并按你的发布流程继续改造。
