@@ -17,6 +17,13 @@
 - Local markdown path: skip download -> parse -> upload to X draft.
 - Draft-only by default (no auto publish).
 
+## Field-tested updates
+
+- Feishu Wiki URLs (`/wiki/...`) are downloaded with `feishu2md dl --dump --wiki`.
+- Feishu video file blocks are inserted back into Markdown near their text anchors instead of being appended at the end.
+- Missing or 0-byte video downloads are retried; empty video files are not sent to X.
+- X video uploads must be serialized: upload one video, wait until `Uploading media...` disappears, then continue with the next media block.
+
 ## Requirements
 
 - X Premium Plus (Articles enabled)

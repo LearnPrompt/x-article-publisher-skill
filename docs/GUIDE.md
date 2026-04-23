@@ -13,13 +13,13 @@ This skill publishes Markdown content to X Articles drafts with:
 
 ### 1) Feishu URL mode
 
-Input contains `feishu.cn` / `larksuite.com` / `feishu.sg` URL.
+Input contains `feishu.cn` / `larksuite.com` / `feishu.sg` URL, including `/docx/` and `/wiki/` links.
 
 Flow:
-1. `prepare_article_source.py` calls `feishu2md dl --dump`
+1. `prepare_article_source.py` calls `feishu2md dl --dump`; for `/wiki/` links it adds `--wiki`
 2. Parses dump JSON for video file blocks
-3. Downloads video files into local `static/`
-4. Inserts video markdown near related anchor text
+3. Downloads video files into local `static/`, retrying missing or 0-byte files
+4. Inserts video markdown near related anchor text; anchor failures are reported instead of appended to the end
 5. Returns normalized local markdown path
 
 ### 2) Local Markdown mode
@@ -101,3 +101,22 @@ This profile is isolated from your main Chrome profile and minimizes repeated lo
 
 - Prefer creating a fresh draft when re-running the same article.
 - If reusing a draft, record inserted images and skip existing ones to avoid duplicates.
+
+## Runbook Notes (2026-04-23)
+
+### 1) Wiki documents
+
+- Wiki URLs can download successfully only after adding the `feishu2md --wiki` flag.
+- Use the generated Markdown and dump JSON from the underlying document token.
+
+### 2) Video anchor correctness
+
+- Do not append videos to the article tail when a text anchor cannot be found.
+- Normalize whitespace when matching Feishu dump text to Markdown text; Feishu often omits spaces around English tokens in dump JSON while `feishu2md` inserts them in Markdown.
+- Verify `parse_markdown.py` reports videos with sensible `after_text` before opening X.
+
+### 3) X video upload serialization
+
+- X shows an `Uploading media...` overlay for video processing.
+- That overlay intercepts subsequent clicks, so only one video upload should be active at a time.
+- Wait until the overlay disappears before inserting the next media block.

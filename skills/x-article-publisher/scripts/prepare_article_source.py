@@ -95,9 +95,17 @@ def get_tenant_access_token(app_id: str, app_secret: str) -> str:
     return data["tenant_access_token"]
 
 
+def is_feishu_wiki_url(source_url: str) -> bool:
+    return bool(re.search(r"/wiki/", source_url, flags=re.IGNORECASE))
+
+
 def run_feishu2md_download(source_url: str, output_dir: Path) -> None:
-    cmd = ["feishu2md", "dl", "--dump", "-o", str(output_dir), source_url]
-    proc = subprocess.run(cmd, text=True, capture_output=True)
+    cmd = ["feishu2md", "dl", "--dump", "-o", str(output_dir)]
+    if is_feishu_wiki_url(source_url):
+        cmd.append("--wiki")
+    cmd.append(source_url)
+
+    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=600)
     if proc.returncode != 0:
         raise RuntimeError(
             "feishu2md download failed.\n"
@@ -259,45 +267,90 @@ def download_media_file(file_token: str, bearer_token: str, output_dir: Path, fa
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "wb") as f:
             f.write(resp.read())
+    if output_path.stat().st_size == 0:
+        raise RuntimeError(f"Downloaded empty media file: {output_path}")
     return output_path
 
 
-def insert_block_after_anchor(content: str, block_markdown: str, anchor_text: str, search_start: int) -> tuple[str, int]:
-    """Insert markdown block after paragraph containing anchor text; fallback append."""
-    anchor = (anchor_text or "").strip()
-    pos = -1
-    if anchor:
-        # Try progressive shorter anchors to increase hit rate on punctuation/spacing differences.
-        candidates = [anchor, anchor[:60], anchor[:40], anchor[:24]]
-        tried = set()
-        for c in candidates:
-            c = c.strip()
-            if not c or c in tried:
-                continue
-            tried.add(c)
-            pos = content.find(c, search_start)
-            if pos != -1:
-                break
-        if pos == -1:
-            for c in candidates:
-                c = c.strip()
-                if not c:
-                    continue
-                pos = content.find(c)
-                if pos != -1:
-                    break
+def existing_nonempty_video_path(output_dir: Path, file_token: str) -> Optional[Path]:
+    for ext in VIDEO_EXTENSIONS:
+        candidate = output_dir / f"{file_token}{ext}"
+        if candidate.exists() and candidate.stat().st_size > 0:
+            return candidate
+    return None
 
+
+def compact_text(text: str) -> str:
+    return re.sub(r"\s+", "", text or "")
+
+
+def find_anchor_position(content: str, anchor_text: str, search_start: int) -> int:
+    anchor = (anchor_text or "").strip()
+    if not anchor:
+        return -1
+
+    # Try exact substring matches first.
+    candidates = [anchor, anchor[:80], anchor[:60], anchor[:40], anchor[:24]]
+    tried = set()
+    for c in candidates:
+        c = c.strip()
+        if not c or c in tried:
+            continue
+        tried.add(c)
+        pos = content.find(c, search_start)
+        if pos != -1:
+            return pos
+    for c in candidates:
+        c = c.strip()
+        if not c:
+            continue
+        pos = content.find(c)
+        if pos != -1:
+            return pos
+
+    # Feishu markdown often inserts spaces between CJK and English tokens while
+    # the OpenAPI dump does not. Match again with whitespace removed, preserving
+    # a compact-index to original-index map.
+    compact_chars = []
+    original_indexes = []
+    for idx, ch in enumerate(content):
+        if ch.isspace():
+            continue
+        compact_chars.append(ch)
+        original_indexes.append(idx)
+    compact_content = "".join(compact_chars)
+
+    compact_start = 0
+    for compact_idx, original_idx in enumerate(original_indexes):
+        if original_idx >= search_start:
+            compact_start = compact_idx
+            break
+
+    compact_candidates = [compact_text(c) for c in candidates if compact_text(c)]
+    for c in compact_candidates:
+        pos = compact_content.find(c, compact_start)
+        if pos != -1:
+            return original_indexes[pos]
+    for c in compact_candidates:
+        pos = compact_content.find(c)
+        if pos != -1:
+            return original_indexes[pos]
+
+    return -1
+
+
+def insert_block_after_anchor(content: str, block_markdown: str, anchor_text: str, search_start: int) -> tuple[str, int, bool]:
+    """Insert markdown block after paragraph containing anchor text."""
+    pos = find_anchor_position(content, anchor_text, search_start)
     if pos == -1:
-        pos = len(content)
-        prefix = content.rstrip("\n")
-        suffix = ""
-    else:
-        block_end = content.find("\n\n", pos)
-        if block_end == -1:
-            block_end = len(content)
-        pos = block_end
-        prefix = content[:pos].rstrip("\n")
-        suffix = content[pos:].lstrip("\n")
+        return content, search_start, False
+
+    block_end = content.find("\n\n", pos)
+    if block_end == -1:
+        block_end = len(content)
+    pos = block_end
+    prefix = content[:pos].rstrip("\n")
+    suffix = content[pos:].lstrip("\n")
 
     inserted = f"{prefix}\n\n{block_markdown}\n\n{suffix}"
     new_start = inserted.find(block_markdown, max(0, search_start))
@@ -305,16 +358,17 @@ def insert_block_after_anchor(content: str, block_markdown: str, anchor_text: st
         new_start = pos
     else:
         new_start += len(block_markdown)
-    return inserted, new_start
+    return inserted, new_start, True
 
 
-def insert_videos_to_markdown(md_path: Path, video_items: list[dict], token_to_path: dict[str, Path]) -> int:
+def insert_videos_to_markdown(md_path: Path, video_items: list[dict], token_to_path: dict[str, Path]) -> tuple[int, list[str]]:
     if not video_items:
-        return 0
+        return 0, []
 
     content = md_path.read_text(encoding="utf-8")
     inserted_count = 0
     cursor = 0
+    errors = []
 
     for item in sorted(video_items, key=lambda x: x.get("root_index", 0)):
         token = item.get("token", "")
@@ -326,11 +380,14 @@ def insert_videos_to_markdown(md_path: Path, video_items: list[dict], token_to_p
         if rel in content:
             continue
         anchor_text = item.get("anchor_text", "")
-        content, cursor = insert_block_after_anchor(content, block_md, anchor_text, cursor)
+        content, cursor, inserted = insert_block_after_anchor(content, block_md, anchor_text, cursor)
+        if not inserted:
+            errors.append(f"{token}: anchor not found: {anchor_text[:120]}")
+            continue
         inserted_count += 1
 
     md_path.write_text(content, encoding="utf-8")
-    return inserted_count
+    return inserted_count, errors
 
 
 def ensure_executable_exists(name: str) -> None:
@@ -366,12 +423,14 @@ def prepare_from_feishu_url(source: str, output_root: Optional[Path]) -> dict:
         bearer = get_tenant_access_token(app_id, app_secret)
         for item in video_blocks:
             try:
-                path = download_media_file(
-                    file_token=item["token"],
-                    bearer_token=bearer,
-                    output_dir=static_dir,
-                    fallback_name=item.get("name") or "video.mp4",
-                )
+                path = existing_nonempty_video_path(static_dir, item["token"])
+                if path is None:
+                    path = download_media_file(
+                        file_token=item["token"],
+                        bearer_token=bearer,
+                        output_dir=static_dir,
+                        fallback_name=item.get("name") or "video.mp4",
+                    )
                 downloaded_video_paths.append(path)
                 token_to_local_path[item["token"]] = path
             except urllib.error.HTTPError as e:
@@ -379,7 +438,8 @@ def prepare_from_feishu_url(source: str, output_root: Optional[Path]) -> dict:
             except Exception as e:  # noqa: BLE001
                 download_errors.append(f"{item['token']}: {e}")
 
-    appended_count = insert_videos_to_markdown(md_path, video_blocks, token_to_local_path)
+    appended_count, append_errors = insert_videos_to_markdown(md_path, video_blocks, token_to_local_path)
+    download_errors.extend(append_errors)
 
     return {
         "mode": "feishu_url",

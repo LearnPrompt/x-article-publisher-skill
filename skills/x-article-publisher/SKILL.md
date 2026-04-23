@@ -129,15 +129,17 @@ For articles with media (images/videos) and dividers, paste ALL text content fir
 
 Two trigger modes are supported:
 
-1. Feishu URL mode  
-   Input contains a Feishu/Lark doc link (`feishu.cn` / `larksuite.com` / `feishu.sg`)  
+1. Feishu URL mode
+   Input contains a Feishu/Lark doc or wiki link (`feishu.cn` / `larksuite.com` / `feishu.sg`)
    - Run `prepare_article_source.py "<url>"`
    - It calls `feishu2md dl --dump` to download markdown
+   - For `/wiki/` URLs it calls `feishu2md dl --dump --wiki`
    - It fetches video file blocks (if any) into local `static/`
-   - It appends `<video src="...">` entries into markdown for downstream upload
+   - It retries missing/0-byte video files and appends `<video src="...">` entries near their source anchors
+   - If a video anchor cannot be found, it reports `video_download_errors` instead of appending the video to the end
 
-2. Local Markdown mode  
-   Input is a local `.md` / `.markdown` file path  
+2. Local Markdown mode
+   Input is a local `.md` / `.markdown` file path
    - Run `prepare_article_source.py "<path/to/file.md>"`
    - It returns the original file directly (no download step)
 
@@ -149,7 +151,7 @@ Two trigger modes are supported:
 - In `core/parser.go`, it only handles `DocxBlockTypeImage` and collects `ImgTokens`
 - `DocxBlockTypeFile` (where many embedded videos are represented) is not rendered to markdown nor downloaded
 
-So videos often disappear in generated markdown unless an extra step is added.  
+So videos often disappear in generated markdown unless an extra step is added.
 `prepare_article_source.py` is that extra step for this skill.
 
 ## 高效执行原则 (Efficiency Guidelines)
@@ -428,23 +430,30 @@ textbox [ref=editor]:
 
 视频不走剪贴板，使用文件上传（与封面相同的 file chooser 机制）。
 
-For each content video (from `content_videos` array), **按 block_index 从大到小的顺序**：
+For each content video (from `content_videos` array), **按 block_index 从大到小的顺序**。多视频文章必须逐个上传、逐个等待完成，不要连续触发多个视频上传。
 
+1. Locate the paragraph containing `after_text` in the editor. Prefer DOM text search over raw mouse clicks when paragraphs contain links or blockquotes.
+2. Collapse the selection at the end of that paragraph.
+3. Click `Insert` / `Add Media`, then click the `Media` menu item.
+4. Click `Add photos or video`, then upload the video file.
+5. Wait until the editor snapshot no longer contains `Uploading media...`.
+
+Observed X behavior:
+- Video upload shows a full-page overlay that intercepts later clicks.
+- The overlay can appear a few seconds after `fileChooser.setFiles(...)`.
+- Starting the next upload before `Uploading media...` disappears causes skipped media or wrong placement.
+- Large videos around 80MB can take minutes; keep waiting if the media block exists and no failure toast is visible.
+
+Robust wait loop:
 ```bash
-# 1. 在 browser_snapshot 中搜索包含 after_text 的段落并点击
-browser_click: element="paragraph with target text", ref=<paragraph_ref>
-
-# 2. 将光标移动到段落末尾
-browser_press_key: End
-
-# 3. 点击工具栏 Insert / Add Media
-browser_click: element="Add Media button", ref=<add_media_ref>
-
-# 4. 上传视频文件
-browser_file_upload: paths=["/path/to/video.mp4"]
-
-# 5. 等待上传完成
-browser_wait_for textGone="正在上传媒体"
+for i in $(seq 1 180); do
+  OUT="$(playwright-cli snapshot)"
+  SNAP="$(printf '%s\n' "$OUT" | sed -n 's/.*Snapshot](\(.*\)).*/\1/p' | tail -1)"
+  if [ -n "$SNAP" ] && ! rg -q 'Uploading media\\.\\.\\.' "$SNAP"; then
+    break
+  fi
+  sleep 3
+done
 ```
 
 ## Step 6.5: Insert Dividers (Via Menu)
