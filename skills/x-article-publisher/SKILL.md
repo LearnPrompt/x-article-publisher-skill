@@ -124,6 +124,8 @@ Dividers are automatically detected by `parse_markdown.py` and output in the `di
 
 For articles with media (images/videos) and dividers, paste ALL text content first, then insert media and dividers at correct positions using block index.
 
+Before browser work, count `content_media`. If there are more than roughly 25 body media items, warn that X Articles has an observed body-media limit and prefer splitting the article or merging images. Do not keep retrying after the editor silently refuses additional media.
+
 1. Route input source (`prepare_article_source.py`)
 2. **(Optional)** Pre-process: Convert tables/mermaid to images
 3. Parse Markdown with Python script → get title, media, **dividers** with block_index, HTML
@@ -171,6 +173,13 @@ Two trigger modes are supported:
 
 So videos often disappear in generated markdown unless an extra step is added.
 `prepare_article_source.py` is that extra step for this skill.
+
+## Field-Tested Failure Modes
+
+- X Articles can silently stop accepting body media after about 25 body media items.
+- Some PNG uploads can be accepted by the file input but ignored by the editor; converting that image to JPG is a practical fallback.
+- If `open.feishu.cn` resolves to a fake IP and HTTPS fails with TLS errors, the local network/proxy DNS path is wrong; fix proxy/DNS before rerunning `prepare_article_source.py`.
+- If the X persistent profile is already open, close only the Chrome process using `~/.codex/browser-profiles/x-articles`, then reopen with `open_x_articles_browser.sh`.
 
 ## 高效执行原则 (Efficiency Guidelines)
 

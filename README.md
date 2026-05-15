@@ -22,6 +22,24 @@ It downloads the document to Markdown, restores missing Feishu video blocks, kee
 | Local Markdown should also work | Skips Feishu download and directly parses local image/video paths |
 | X video upload is fragile | Uploads one video at a time and waits for `Uploading media...` to finish before continuing |
 
+## Who It Is For
+
+This skill is intentionally narrow: it is for creators and small teams who write long-form content in Feishu/Lark and distribute through X Articles. It is especially useful when posts include screenshots, product demos, screen recordings, or AI-generated videos.
+
+It is not a general CMS and it does not try to publish everywhere. It focuses on one repeated workflow: **Feishu writing -> local Markdown as the handoff format -> X Article draft**.
+
+## Field-Tested Cases
+
+The workflow has been tested on real articles, not only fixtures:
+
+| Case | Result |
+|---|---|
+| Feishu docx with `1` video and `10` body images | Created a complete X Article draft |
+| Feishu docx with `10` videos and `4` body images | Kept videos and images in source order |
+| Feishu wiki link | Used `--wiki` and restored video ordering |
+| Feishu docx with `34` body media items | Hit the observed X Articles body-media limit around `25` items |
+| Local Markdown with local images and `<video>` tags | Skipped Feishu download and assembled the X draft directly |
+
 ---
 
 ## Install
@@ -203,6 +221,8 @@ Relative paths are resolved from the Markdown file directory.
 
 Full framework: [docs/GUIDE.md](docs/GUIDE.md)
 
+Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
 ---
 
 ## Honest Limits
@@ -210,9 +230,11 @@ Full framework: [docs/GUIDE.md](docs/GUIDE.md)
 - The skill creates X Article drafts; it does not auto-publish.
 - X Articles requires an account with Articles access, usually X Premium Plus.
 - First use of the persistent profile may still require manual X login or security verification.
+- X Articles has an observed body-media limit: after roughly `25` body media items, the editor may silently refuse more uploads. This is based on field testing, not official X documentation.
 - Remote image/video URLs are detected but not treated as reliable uploadable local files. Keep media local for deterministic uploads.
 - Feishu URL mode depends on a Feishu custom app with document read, media download, and wiki read permissions for `/wiki/` links.
 - Large videos can take minutes to process on X; interruption may leave a partial draft.
+- Some PNG files may be accepted by the file input but ignored by the X editor. Converting that image to JPG has worked as a fallback in practice.
 
 ---
 
@@ -225,7 +247,9 @@ x-article-publisher-skill/
 ├── README_CN.md
 ├── docs/
 │   ├── GUIDE.md
-│   └── GUIDE_CN.md
+│   ├── GUIDE_CN.md
+│   ├── TROUBLESHOOTING.md
+│   └── TROUBLESHOOTING_CN.md
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
 │   ├── requirements.txt

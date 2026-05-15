@@ -14,3 +14,7 @@ venv/
 *.tmp
 *.temp
 /tmp/
+
+# Local publishing/runtime artifacts
+.playwright-cli/
+tmp_*_publish/

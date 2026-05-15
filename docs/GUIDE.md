@@ -219,7 +219,31 @@ Large videos can take minutes. Keep waiting if the media block is visible and no
 
 ---
 
-## 8. Troubleshooting
+## 8. Field Limits
+
+### Body media count
+
+In field tests, X Articles may silently stop accepting body media after roughly `25` body media items. This number is based on repeated real uploads, not official X documentation.
+
+Recommended handling:
+
+1. Split the article when body media exceeds `25` items.
+2. If it must remain one article, merge consecutive screenshots into a long image or keep only the most important videos.
+3. Do not retry indefinitely after the 26th media item; this is usually not a network issue.
+
+### PNG compatibility
+
+Some PNG files are accepted by the file input but do not create a media block in the X editor. Converting that image to JPG and retrying has worked as a practical fallback.
+
+### Persistent profile ownership
+
+If the persistent profile is already held by an existing Chrome process, Playwright may report that the page opened in an existing browser session. Close only the Chrome process using `~/.codex/browser-profiles/x-articles`; do not close the user's daily Chrome profile.
+
+---
+
+## 9. Troubleshooting
+
+For a focused troubleshooting checklist, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ### Feishu app credentials missing
 

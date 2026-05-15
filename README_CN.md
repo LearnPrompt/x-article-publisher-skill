@@ -22,6 +22,24 @@
 | 本地 Markdown 也应该能发 | 本地 `.md` 直接解析，不走飞书下载步骤 |
 | X 视频上传容易卡住 | 串行上传视频，每个视频等 `Uploading media...` 消失后再继续 |
 
+## 适合谁
+
+这个 skill 很垂直：适合用飞书/Lark 写长文、用 X Articles 做公开分发的创作者和小团队。尤其适合文章里经常有截图、演示视频、产品录屏、AI 生成视频的人。
+
+它不追求做一个通用 CMS，也不试图覆盖所有社交平台。它只把一个高频工作流打穿：**飞书写作 -> 本地 Markdown 中间态 -> X Article 草稿**。
+
+## 实战验证
+
+这个项目不是只跑过样例。它已经在真实文章里验证过这些情况：
+
+| 场景 | 结果 |
+|---|---|
+| 飞书 docx，`1` 个视频、`10` 张正文图 | 完整生成 X Article 草稿 |
+| 飞书 docx，`10` 个视频、`4` 张正文图 | 视频和图片按原文顺序插入 |
+| 飞书 wiki 链接 | 自动使用 `--wiki` 下载，并恢复视频顺序 |
+| 飞书 docx，`34` 个正文媒体 | 触发 X Articles 约 `25` 个正文媒体的实测上限 |
+| 本地 Markdown，含本地图片和 `<video>` | 可跳过飞书下载，直接进入 X 草稿组装 |
+
 ---
 
 ## 安装
@@ -203,6 +221,8 @@ Publish /path/to/article.md to X draft
 
 完整框架说明：[docs/GUIDE_CN.md](docs/GUIDE_CN.md)
 
+常见问题排障：[docs/TROUBLESHOOTING_CN.md](docs/TROUBLESHOOTING_CN.md)
+
 ---
 
 ## 诚实边界
@@ -210,9 +230,11 @@ Publish /path/to/article.md to X draft
 - 这个 skill 只创建 X Article 草稿，不自动发布。
 - X Articles 需要账号拥有 Articles 权限，通常需要 X Premium Plus。
 - 第一次使用持久化 profile 时，仍可能需要手动完成 X 登录或安全验证。
+- X Articles 正文媒体数量存在实测上限：约 `25` 个正文媒体后，编辑器可能静默拒绝继续上传。这个数字来自实战观察，不是 X 官方公开文档。
 - 远程图片/视频 URL 会被识别，但不作为稳定上传路径；要稳定上传，请把媒体文件放在本地。
 - 飞书链接模式依赖一个飞书自建应用，并且这个应用要开通文档读取、素材下载、Wiki 读取等权限。
 - 大视频在 X 上可能需要几分钟处理，中途打断可能留下半成品草稿。
+- 个别 PNG 可能在 X 编辑器里无响应；实战中转成 JPG 后可继续上传。
 
 ---
 
@@ -225,7 +247,9 @@ x-article-publisher-skill/
 ├── README_CN.md
 ├── docs/
 │   ├── GUIDE.md
-│   └── GUIDE_CN.md
+│   ├── GUIDE_CN.md
+│   ├── TROUBLESHOOTING.md
+│   └── TROUBLESHOOTING_CN.md
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
 │   ├── requirements.txt
