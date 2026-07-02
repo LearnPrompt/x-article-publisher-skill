@@ -268,6 +268,8 @@ x-article-publisher-skill/
 ├── install.sh
 ├── README.md
 ├── README_CN.md
+├── scripts/
+│   └── clean-local-artifacts.sh
 ├── docs/
 │   ├── GUIDE.md
 │   ├── GUIDE_CN.md
@@ -286,6 +288,14 @@ x-article-publisher-skill/
 │       └── table_to_image.py
 └── .claude-plugin/plugin.json
 ```
+
+本地试发后清理：
+
+```bash
+bash scripts/clean-local-artifacts.sh
+```
+
+它会删除被忽略的运行残留，例如 `.playwright-cli/`、`tmp_*_publish/`、`x_article_runs/`、`.DS_Store` 和 Python `__pycache__/` 目录，不会删除已跟踪的源码文件。
 
 ---
 

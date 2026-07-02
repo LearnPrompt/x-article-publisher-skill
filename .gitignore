@@ -14,7 +14,15 @@ venv/
 *.tmp
 *.temp
 /tmp/
+*.log
 
 # Local publishing/runtime artifacts
 .playwright-cli/
 tmp_*_publish/
+x_article_runs/
+*.clean.md
+*.optimized.md
+optimize.json
+source.json
+article.json
+article.html

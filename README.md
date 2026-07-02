@@ -269,6 +269,8 @@ x-article-publisher-skill/
 ├── install.sh
 ├── README.md
 ├── README_CN.md
+├── scripts/
+│   └── clean-local-artifacts.sh
 ├── docs/
 │   ├── GUIDE.md
 │   ├── GUIDE_CN.md
@@ -287,6 +289,14 @@ x-article-publisher-skill/
 │       └── table_to_image.py
 └── .claude-plugin/plugin.json
 ```
+
+Local cleanup after test publishing:
+
+```bash
+bash scripts/clean-local-artifacts.sh
+```
+
+This removes ignored runtime artifacts such as `.playwright-cli/`, `tmp_*_publish/`, `x_article_runs/`, `.DS_Store`, and Python `__pycache__/` directories. It does not delete tracked source files.
 
 ---
 
