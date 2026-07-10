@@ -4,57 +4,57 @@
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![Status](https://img.shields.io/badge/status-feature--complete-blue?style=flat-square)
 
-→ [中文版](README_CN.md)
+→ [English](README_EN.md)
 
-Turn a Feishu/Lark doc or a local Markdown file into a ready-to-review X Article draft. Videos, images and GIFs land exactly where they belong. It never publishes anything on its own — the final click is always yours.
+把飞书文档或本地 Markdown 一键变成 X Article 草稿。视频、图片、GIF 全部自动落回原来的位置。它永远只生成草稿，最后那一下发布键始终握在你自己手里。
 
-If you have ever spent an evening re-uploading 14 media files one by one into the X Article editor, dragging each video back to the paragraph it belongs to, this skill gives you that evening back.
+如果你曾经花一整晚往 X Article 编辑器里手动重传十几个媒体文件，再把每段视频拖回它该在的段落，这个 skill 能把那个晚上还给你。
 
-## Showcase
+## 实际效果
 
-| Published result | Skill run log |
+| 发布效果 | 运行记录 |
 |:---:|:---:|
-| ![Published X Article — 23K views](assets/showcase-published.png) | ![Skill run — 3m44s, fully automated](assets/showcase-run.png) |
+| ![发布后的 X Article — 23K 浏览](assets/showcase-published.png) | ![Skill 运行 — 3分44秒全自动](assets/showcase-run.png) |
 
-One Feishu link in, one X Article draft out. 3 minutes 44 seconds, zero manual media uploads.
+一条飞书链接进去，一篇 X Article 草稿出来。3 分 44 秒，零次手动上传。
 
-## 30-second start
+## 30 秒上手
 
 ```bash
 npx skills add LearnPrompt/x-article-publisher-skill --skill x-article-publisher --global --copy --yes --full-depth
 ```
 
-Then open Claude Code and say one sentence:
+装完打开 Claude Code，说一句话就行：
 
 ```
-Publish this to X Articles: https://xxx.feishu.cn/docx/abc123
+把这篇发布到 X Articles：https://xxx.feishu.cn/docx/abc123
 ```
 
-or with a local file:
+本地文件也一样：
 
 ```
-Turn ~/Downloads/my-post.md into an X Article draft
+把 ~/Downloads/my-post.md 做成 X Article 草稿
 ```
 
-The skill exports the doc, cleans it up, opens a persistent browser, assembles the draft — cover, title, body, every piece of media in order — and stops right before publish. You review, you hit the button.
+skill 会导出文档、清洗内容、打开持久化浏览器、把草稿一路装配好——封面、标题、正文、每一个媒体按原顺序就位——然后停在发布键前面。你过目，你点发布。
 
-Prefer a full Codex setup with all dependencies handled for you? One line:
+想要一条命令连依赖一起装好的完整 Codex 环境？
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
 ```
 
-## What it does
+## 它能干什么
 
-You wrote a long post in Feishu with 10 videos and 4 screenshots. Paste the URL, and the skill pulls everything out — including the videos that Feishu export normally loses — and rebuilds the article on X with every clip anchored to its original paragraph.
+你在飞书写了一篇带 10 个视频和 4 张截图的长文。贴个链接，skill 把所有内容抓出来——包括飞书导出时通常会丢掉的视频——然后在 X 上原样重建，每段视频都锚回它原本所在的段落。
 
-You keep drafts as local Markdown. Point the skill at the .md file and it does the same thing, no Feishu account needed.
+你习惯用本地 Markdown 存草稿。直接指给它 .md 文件，同样的流程，连飞书账号都不需要。
 
-You embedded an 18MB GIF. X will not take it, so the skill transcodes it to MP4 before upload. Oversized videos get the same treatment automatically.
+你嵌了一张 18MB 的 GIF。X 不收这个，skill 会先转码成 MP4 再上传。超大视频也是同样的自动处理。
 
-You use this every week. The browser profile persists, so you log in to X once and never see the login screen again.
+你每周都要发。浏览器 profile 持久化，X 只需要登录一次，之后再也见不到登录页。
 
-## How it works
+## 工作原理
 
 ```mermaid
 flowchart LR
@@ -67,45 +67,45 @@ flowchart LR
     G --> H[Final anchor audit]
 ```
 
-The last step matters more than it looks. After every media item is uploaded, the skill audits the whole draft against the source and repairs any anchor that drifted — adjacent media clusters are the usual suspects, and they get fixed at cluster level.
+最后一步比看起来重要。所有媒体上传完之后，skill 会拿草稿和源文档整体对账，把漂移的锚点修回去——相邻媒体簇最容易出问题，修复也是按簇级别进行的。
 
-## Field-tested
+## 实测记录
 
-These are real runs, not synthetic benchmarks.
+这些是真实跑出来的结果，没有一条是编的。
 
-| Input | Result |
-|-------|--------|
-| 1 video + 10 images | Complete draft, all anchors correct |
-| 10 videos + 4 images | Source order fully maintained |
-| 18MB GIF | Auto-converted to MP4, uploaded clean |
-| Adjacent media clusters | Drift repaired by cluster-level audit |
-| 34 body media items | Hit X's ~25 item ceiling — see limits below |
+| 输入 | 结果 |
+|------|------|
+| 1 个视频 + 10 张图 | 完整草稿，锚点全部正确 |
+| 10 个视频 + 4 张图 | 源文档顺序完整保持 |
+| 18MB GIF | 自动转 MP4，干净上传 |
+| 相邻媒体簇 | 簇级审计修复漂移 |
+| 正文 34 个媒体 | 撞上 X 约 25 个的上限——见下方局限 |
 
-## Setup
+## 环境准备
 
-You need X Premium Plus (the Articles feature lives behind it), Python 3.9+ and Node.js/npm. For Feishu mode you additionally need [feishu2md](https://github.com/Wsine/feishu2md) and a Feishu app credential pair — create a self-built app in the Feishu open platform, grant it docx read scope, then export `FEISHU_APP_ID` and `FEISHU_APP_SECRET` in your shell. That is the whole credential story.
+你需要 X Premium Plus（Articles 功能在它后面）、Python 3.9+ 和 Node.js/npm。飞书模式额外需要 [feishu2md](https://github.com/Wsine/feishu2md) 和一对飞书应用凭证——在飞书开放平台建一个自建应用，给它 docx 读取权限，然后在 shell 里 export `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET`。凭证部分到此为止。
 
-First run only: the browser opens X and waits for you to log in manually. After that the persistent profile takes over.
+只有首次运行需要你在弹出的浏览器里手动登录一次 X，之后持久化 profile 会接管一切。
 
-Not sure your environment is ready? Run the doctor:
+不确定环境是否就绪？跑一下体检脚本：
 
 ```bash
 bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
 ```
 
-It checks every dependency and tells you exactly what is missing. More detail lives in `docs/GUIDE.md` and `docs/TROUBLESHOOTING.md`.
+它会逐项检查依赖并告诉你缺了什么。更多细节在 `docs/GUIDE.md` 和 `docs/TROUBLESHOOTING.md`。
 
-## Honest limits
+## 诚实的局限
 
-This skill creates drafts and only drafts. There is no flag, no option, no prompt that makes it auto-publish — that is a design decision, not a missing feature.
+这个 skill 只创建草稿。没有任何参数、任何选项、任何 prompt 能让它自动发布——这是刻意的设计，永远如此。
 
-X caps body media at roughly 25 items; a 34-media article will lose the tail. Large video transcoding can take a few minutes, so a video-heavy post is a coffee break, not an instant. And X occasionally ignores certain PNG files without any error message — re-exporting as JPEG usually fixes it.
+X 对正文媒体有约 25 个的上限，34 个媒体的文章会丢掉尾部。大视频转码可能要几分钟，视频很多的稿子够你喝杯咖啡。另外 X 偶尔会不报错地忽略某些 PNG，重新导出成 JPEG 通常就好了。
 
-## Repo structure
+## 仓库结构
 
 ```
 x-article-publisher-skill/
-├── install.sh                    # one-command setup
+├── install.sh                    # 一条命令装好一切
 ├── README.md / README_CN.md
 ├── scripts/
 │   └── clean-local-artifacts.sh
@@ -113,19 +113,19 @@ x-article-publisher-skill/
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
 │   ├── requirements.txt
-│   └── scripts/                  # core Python + shell, incl. doctor.sh
+│   └── scripts/                  # 核心 Python + shell，含 doctor.sh
 └── .claude-plugin/plugin.json
 ```
 
-## Maintenance
+## 维护状态
 
-Passive maintenance as of 2026-06. The core pipeline is feature-complete and in weekly personal use; issues and PRs are handled best-effort.
+2026 年 6 月起进入被动维护。核心流程已 feature-complete，本人每周实际在用；issue 和 PR 尽力处理。
 
-## Credits
+## 致谢
 
-Feishu-to-Markdown baseline: [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
+飞书转 Markdown 基础方案：[Wsine/feishu2md](https://github.com/Wsine/feishu2md)
 
-Skill packaging inspiration: [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
+Skill 打包思路参考：[wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
 
 ## License
 
