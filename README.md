@@ -130,3 +130,7 @@ Skill 打包思路参考：[wshuyi/x-article-publisher-skill](https://github.com
 ## License
 
 MIT
+
+---
+
+<sub>公众号「卡尔的AI沃茨」 · X @aiwarts · <a href="https://learnprompt.pro/workshop/">learnprompt.pro/workshop</a></sub>
