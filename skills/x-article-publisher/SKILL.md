@@ -498,9 +498,10 @@ X can split a Markdown sentence across multiple editor text nodes when the sourc
 Fallback matching order:
 
 1. Try the normalized full anchor with Markdown markers removed (`**`, heading marks, blockquote marks).
-2. Try progressively shorter prefixes.
-3. For split rich text, use a distinctive short prefix such as the opening clause, but only if it is unique enough in the article.
-4. In Preview, re-check with a longer exact nearby phrase whenever a short anchor such as `比方说` could match an earlier paragraph.
+2. Strip a leading Markdown/DOM list marker (`-`, `*`, `+`, or `•`) before matching because X does not include it in the rendered list-item text.
+3. Try progressively shorter prefixes.
+4. For split rich text, use a distinctive short prefix such as the opening clause, but only if it is unique enough in the article.
+5. In Preview, re-check with a longer exact nearby phrase whenever a short anchor such as `比方说` could match an earlier paragraph.
 
 ## Step 6.2: Insert Content Videos (File Upload)
 
@@ -576,6 +577,14 @@ Before reporting success, open Preview and verify both counts and order:
 5. For same-anchor media runs, confirm the next N visible media items preserve the Markdown order.
 6. For adjacent video/image clusters, confirm the local sequence around all involved anchors, not only the nearest media.
 7. Confirm Preview does not contain `Something went wrong. Please try again later.`.
+
+If tag-based anchor lookup reports missing anchors even though counts are correct, use a geometry fallback. X Preview often renders ordinary paragraphs as `div` or `span` instead of `p`:
+
+1. Search visible `div, span, p, li, blockquote, h1, h2, h3` elements using the same normalized anchor prefixes.
+2. Choose the matching visible node with the shortest normalized text; this avoids selecting an outer article container.
+3. Read its bottom edge with `getBoundingClientRect().bottom`.
+4. Sort body media by `getBoundingClientRect().y`, counting only `img[alt="Image"]` and visible `video` elements.
+5. Confirm the first media below the anchor bottom has the expected type. For a same-anchor run, compare the next N media types with the Markdown order.
 
 If one media item is under the wrong anchor, do not rebuild the entire draft:
 

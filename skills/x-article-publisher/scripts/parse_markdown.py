@@ -54,6 +54,7 @@ SEARCH_DIRS = [
 ]
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv", ".mpeg", ".mpg"}
+LEADING_LIST_MARKER = re.compile(r"^\s*[-+*•]\s+")
 
 
 def is_remote_path(media_path: str) -> bool:
@@ -69,6 +70,11 @@ def media_type_for_path(media_path: str) -> str:
     if ext in VIDEO_EXTENSIONS:
         return "video"
     return "image"
+
+
+def normalize_anchor_text(text: str) -> str:
+    """Remove list markers that X omits from rendered text nodes."""
+    return LEADING_LIST_MARKER.sub("", text).strip()
 
 
 def find_media_file(original_path: str, filename: str, media_type: str) -> tuple[str, bool]:
@@ -231,7 +237,7 @@ def extract_media_and_dividers(markdown: str, base_path: Path) -> tuple[list[dic
             if clean_blocks:
                 prev_block = clean_blocks[-1].strip()
                 lines = [l for l in prev_block.split('\n') if l.strip()]
-                after_text = lines[-1][:80] if lines else ""
+                after_text = normalize_anchor_text(lines[-1])[:80] if lines else ""
             dividers.append({
                 "block_index": block_index,
                 "after_text": after_text
@@ -287,7 +293,7 @@ def extract_media_and_dividers(markdown: str, base_path: Path) -> tuple[list[dic
             if clean_blocks:
                 prev_block = clean_blocks[-1].strip()
                 lines = [l for l in prev_block.split('\n') if l.strip()]
-                after_text = lines[-1][:80] if lines else ""
+                after_text = normalize_anchor_text(lines[-1])[:80] if lines else ""
 
             media_items.append({
                 "type": media_type,
