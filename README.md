@@ -1,310 +1,132 @@
-# X Article Publisher Skill
+# x-article-publisher
 
-> Publish Feishu/Lark documents or local Markdown to X Articles drafts, with images, videos, and a persistent logged-in X profile.
+![GitHub Stars](https://img.shields.io/github/stars/LearnPrompt/x-article-publisher-skill?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![Status](https://img.shields.io/badge/status-feature--complete-blue?style=flat-square)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Skills](https://img.shields.io/badge/skills.sh-Compatible-green)](https://skills.sh) [![X Articles](https://img.shields.io/badge/X-Articles-black)](https://x.com/compose/articles) [![Maintenance](https://img.shields.io/badge/maintenance-passive-lightgrey)](#maintenance-status)
+→ [中文版](README_CN.md)
 
-## Maintenance Status
+Turn a Feishu/Lark doc or a local Markdown file into a ready-to-review X Article draft. Videos, images and GIFs land exactly where they belong. It never publishes anything on its own — the final click is always yours.
 
-This skill is in **passive maintenance** as of 2026-06. The workflow it implements (Feishu → local Markdown → X Article draft) is feature-complete for the author's own publishing pipeline, and no new features are planned.
+If you have ever spent an evening re-uploading 14 media files one by one into the X Article editor, dragging each video back to the paragraph it belongs to, this skill gives you that evening back.
 
-What this means:
-- ✅ Issues and PRs are welcome and will be reviewed when time permits.
-- ✅ Breaking changes from X's web UI or Feishu's export format will be fixed (the author still uses this skill).
-- ❌ New rendering targets, new source platforms, or major refactors are out of scope — fork it if you need a different shape.
-- ❌ No commitment to response time. Critical X UI breaks may take 1-2 weeks.
+## Showcase
 
-If you depend on this skill for production publishing, please pin a specific commit and read the release notes before updating.
+| Published result | Skill run log |
+|:---:|:---:|
+| ![Published X Article — 23K views](assets/showcase-published.png) | ![Skill run — 3m44s, fully automated](assets/showcase-run.png) |
 
-**This skill turns a Feishu document into a ready-to-review X Article draft.**
+One Feishu link in, one X Article draft out. 3 minutes 44 seconds, zero manual media uploads.
 
-It downloads the document to Markdown, restores missing Feishu video blocks, keeps video order aligned with the original article, parses local images/videos, opens X with a persistent browser profile, and uploads everything into a draft. It never auto-publishes.
-
-**Languages:** [中文](README_CN.md) · English
-
----
-
-## What It Solves
-
-| Problem | What this skill does |
-|---|---|
-| Feishu exports often miss videos | Reads Feishu dump JSON, downloads video file blocks, and writes `<video>` tags back into Markdown near the right anchor text |
-| Videos can appear at the end of the article | Uses anchor-based insertion and whitespace-tolerant matching instead of appending videos to the tail |
-| Feishu callout blocks add useless `Tip` text | Normalizes callout markers while preserving multiline highlighted content |
-| Repeated X login is risky | Uses a dedicated persistent browser profile, isolated from your daily Chrome profile |
-| Local Markdown should also work | Skips Feishu download and directly parses local image/video paths |
-| X video upload is fragile | Transcodes oversized videos, uploads one video at a time, and verifies final preview order by anchor |
-| Large GIFs can silently fail or become still images | Uploads GIFs as file media when possible, and converts stubborn large GIFs to MP4 while keeping the original anchor |
-| Adjacent video/image clusters can shuffle | Audits the local media sequence in Preview and repairs only the affected cluster instead of rebuilding the whole draft |
-
-## Who It Is For
-
-This skill is intentionally narrow: it is for creators and small teams who write long-form content in Feishu/Lark and distribute through X Articles. It is especially useful when posts include screenshots, product demos, screen recordings, or AI-generated videos.
-
-It is not a general CMS and it does not try to publish everywhere. It focuses on one repeated workflow: **Feishu writing -> local Markdown as the handoff format -> X Article draft**.
-
-## Field-Tested Cases
-
-The workflow has been tested on real articles, not only fixtures:
-
-| Case | Result |
-|---|---|
-| Feishu docx with `1` video and `10` body images | Created a complete X Article draft |
-| Feishu docx with `10` videos and `4` body images | Kept videos and images in source order |
-| Feishu docx with `8` videos and `6` body images | Used video transcodes plus final anchor audit to keep all media in place |
-| Feishu wiki link | Used `--wiki` and restored video ordering |
-| Feishu docx with `34` body media items | Hit the observed X Articles body-media limit around `25` items |
-| Feishu docx with adjacent videos plus image under nearby anchors | Repaired local cluster by deleting only the affected media blocks and reinserting from bottom to top |
-| Feishu docx with `18MB` GIF | X ignored the GIF upload, so it was converted to MP4 and reinserted at the same anchor |
-| Local Markdown with local images and `<video>` tags | Skipped Feishu download and assembled the X draft directly |
-
----
-
-## Install
-
-### Option A: Full Codex Setup Recommended
-
-This installs the skill into `~/.codex/skills/x-article-publisher`, installs Python dependencies, primes Playwright MCP, and tries to install `feishu2md` with Homebrew when available.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
-```
-
-Manual clone:
-
-```bash
-git clone https://github.com/LearnPrompt/x-article-publisher-skill.git
-bash x-article-publisher-skill/install.sh
-```
-
-Skip dependency installation if you only want to copy the skill files:
-
-```bash
-INSTALL_DEPS=0 bash x-article-publisher-skill/install.sh
-```
-
-### Option B: skills.sh / Claude Code Compatible Install
-
-The repository is discoverable by the `skills` CLI:
+## 30-second start
 
 ```bash
 npx skills add LearnPrompt/x-article-publisher-skill --skill x-article-publisher --global --copy --yes --full-depth
 ```
 
-Important: `skills add` installs the skill files only. Runtime dependencies still need to be installed in your environment. For Codex, the full setup script above is the simplest path.
+Then open Claude Code and say one sentence:
 
-### Check Your Environment
+```
+Publish this to X Articles: https://xxx.feishu.cn/docx/abc123
+```
+
+or with a local file:
+
+```
+Turn ~/Downloads/my-post.md into an X Article draft
+```
+
+The skill exports the doc, cleans it up, opens a persistent browser, assembles the draft — cover, title, body, every piece of media in order — and stops right before publish. You review, you hit the button.
+
+Prefer a full Codex setup with all dependencies handled for you? One line:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-skill/main/install.sh | bash
+```
+
+## What it does
+
+You wrote a long post in Feishu with 10 videos and 4 screenshots. Paste the URL, and the skill pulls everything out — including the videos that Feishu export normally loses — and rebuilds the article on X with every clip anchored to its original paragraph.
+
+You keep drafts as local Markdown. Point the skill at the .md file and it does the same thing, no Feishu account needed.
+
+You embedded an 18MB GIF. X will not take it, so the skill transcodes it to MP4 before upload. Oversized videos get the same treatment automatically.
+
+You use this every week. The browser profile persists, so you log in to X once and never see the login screen again.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Feishu URL / Local .md] --> B[Export + video recovery]
+    B --> C[Callout cleanup]
+    C --> D[Markdown parsing]
+    D --> E[Persistent X browser]
+    E --> F[Draft assembly<br/>cover, title, body, media]
+    F --> G[Transcode + sequential upload]
+    G --> H[Final anchor audit]
+```
+
+The last step matters more than it looks. After every media item is uploaded, the skill audits the whole draft against the source and repairs any anchor that drifted — adjacent media clusters are the usual suspects, and they get fixed at cluster level.
+
+## Field-tested
+
+These are real runs, not synthetic benchmarks.
+
+| Input | Result |
+|-------|--------|
+| 1 video + 10 images | Complete draft, all anchors correct |
+| 10 videos + 4 images | Source order fully maintained |
+| 18MB GIF | Auto-converted to MP4, uploaded clean |
+| Adjacent media clusters | Drift repaired by cluster-level audit |
+| 34 body media items | Hit X's ~25 item ceiling — see limits below |
+
+## Setup
+
+You need X Premium Plus (the Articles feature lives behind it), Python 3.9+ and Node.js/npm. For Feishu mode you additionally need [feishu2md](https://github.com/Wsine/feishu2md) and a Feishu app credential pair — create a self-built app in the Feishu open platform, grant it docx read scope, then export `FEISHU_APP_ID` and `FEISHU_APP_SECRET` in your shell. That is the whole credential story.
+
+First run only: the browser opens X and waits for you to log in manually. After that the persistent profile takes over.
+
+Not sure your environment is ready? Run the doctor:
 
 ```bash
 bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
 ```
 
-For local Markdown only:
+It checks every dependency and tells you exactly what is missing. More detail lives in `docs/GUIDE.md` and `docs/TROUBLESHOOTING.md`.
 
-```bash
-bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh local
+## Honest limits
+
+This skill creates drafts and only drafts. There is no flag, no option, no prompt that makes it auto-publish — that is a design decision, not a missing feature.
+
+X caps body media at roughly 25 items; a 34-media article will lose the tail. Large video transcoding can take a few minutes, so a video-heavy post is a coffee break, not an instant. And X occasionally ignores certain PNG files without any error message — re-exporting as JPEG usually fixes it.
+
+## Repo structure
+
 ```
-
----
-
-## Required Accounts And Tools
-
-| Mode | Required |
-|---|---|
-| Feishu URL -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, `feishu2md`, Feishu app credentials (App ID / App Secret), one-time X login |
-| Local Markdown -> X draft | X Premium Plus, Python 3.9+, Node.js/npm, one-time X login |
-
-### Install feishu2md
-
-`feishu2md` is the upstream Feishu/Lark-to-Markdown exporter used by this skill before video recovery.
-
-macOS or Linux with Homebrew:
-
-```bash
-brew install feishu2md
-```
-
-Manual install:
-- Download the binary from [Wsine/feishu2md releases](https://github.com/Wsine/feishu2md/releases).
-- Put the `feishu2md` executable somewhere on your `PATH`.
-- Verify it works:
-
-```bash
-feishu2md -h
-```
-
-References:
-- [feishu2md GitHub README](https://github.com/Wsine/feishu2md)
-- [Homebrew formula: feishu2md](https://formulae.brew.sh/formula/feishu2md)
-
-### Configure Feishu/Lark App Credentials
-
-Configure Feishu app credentials for Feishu URL mode:
-
-```bash
-feishu2md config --appId <your_app_id> --appSecret <your_app_secret>
-```
-
-What this means:
-- The App ID and App Secret come from a Feishu/Lark custom app that you create in the Feishu developer console.
-- They are not your Feishu login password.
-- `feishu2md` uses them to call Feishu APIs and download the document, images, and files/videos that the shared document allows the app to read.
-- The app needs permissions for document read and media/file download. Wiki links also need wiki read permission.
-
-Where to create the app:
-- Feishu: [open.feishu.cn/app](https://open.feishu.cn/app)
-- Lark: [open.larksuite.com/app](https://open.larksuite.com/app)
-
-Minimum permissions to add in the app's permission management page:
-
-| Permission | Why it is needed |
-|---|---|
-| `docx:document:readonly` | Read Feishu Docs content and blocks |
-| `docs:document.media:download` | Download images and file/video assets from Docs |
-| `drive:file:readonly` | Read cloud drive files/folders referenced by the document |
-| `wiki:wiki:readonly` | Required for `/wiki/` links |
-
-Useful official/API references:
-- [Get document basic info](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)
-- [Get document blocks](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list)
-- [Download media](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download)
-- [Get wiki node info](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)
-
-Environment variables are also supported:
-
-```bash
-export FEISHU_APP_ID=<your_app_id>
-export FEISHU_APP_SECRET=<your_app_secret>
-```
-
-After configuration, you can test `feishu2md` directly:
-
-```bash
-feishu2md dl --dump -o /tmp/feishu2md-test "https://your-domain.feishu.cn/docx/..."
-```
-
----
-
-## Try It
-
-### Feishu/Lark Source
-
-Ask your agent:
-
-```text
-Publish this Feishu doc to X draft: https://your-domain.feishu.cn/docx/...
-```
-
-Chinese prompt:
-
-```text
-把这个飞书文档发布到 X 草稿：https://your-domain.feishu.cn/docx/...
-```
-
-### Local Markdown Source
-
-```text
-Publish /path/to/article.md to X draft
-```
-
-Chinese prompt:
-
-```text
-把 /path/to/article.md 发布到 X 草稿
-```
-
-Supported local media syntax:
-
-```markdown
-![cover](./static/cover.png)
-
-<video src="./static/demo.mp4"></video>
-
-[video](./static/clip.mp4)
-```
-
-Relative paths are resolved from the Markdown file directory.
-
----
-
-## How It Works
-
-1. **Source routing**: Feishu URL triggers download; local Markdown skips download.
-2. **Feishu recovery**: `feishu2md dl --dump` exports Markdown and JSON; `/wiki/` links use `--wiki`.
-3. **Video restoration**: Feishu file blocks are downloaded from OpenAPI and inserted back near text anchors.
-4. **Callout cleanup**: Feishu callout labels like `Tip` or `[!TIP]` are removed while quoted content stays intact.
-5. **Markdown parsing**: title, cover, HTML body, images, videos, dividers, and block positions are extracted.
-6. **Persistent X browser**: X opens with `~/.codex/browser-profiles/x-articles` unless overridden.
-7. **Draft assembly**: cover first, title, rich-text body, then media/dividers by descending block index.
-8. **Video safety**: transcode oversized videos when needed, upload one video at a time, and wait for X processing.
-9. **Final audit**: verify media count and anchor order in the X preview DOM; count alone is not enough.
-
-Full framework: [docs/GUIDE.md](docs/GUIDE.md)
-
-Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
-
----
-
-## Honest Limits
-
-- The skill creates X Article drafts; it does not auto-publish.
-- X Articles requires an account with Articles access, usually X Premium Plus.
-- First use of the persistent profile may still require manual X login or security verification.
-- X Articles has an observed body-media limit: after roughly `25` body media items, the editor may silently refuse more uploads. This is based on field testing, not official X documentation.
-- Remote image/video URLs are detected but not treated as reliable uploadable local files. Keep media local for deterministic uploads.
-- Feishu URL mode depends on a Feishu custom app with document read, media download, and wiki read permissions for `/wiki/` links.
-- Large videos can take minutes to process on X; interruption may leave a partial draft.
-- Some PNG files may be accepted by the file input but ignored by the X editor. Converting that image to JPG has worked as a fallback in practice.
-- Large GIF files may be accepted by the picker but never become a media block, or they may lose animation if pasted through the clipboard. Convert stubborn GIFs to MP4 and upload the MP4 at the original GIF anchor.
-- Very large or high-bitrate videos may close or destabilize the browser session. In practice, transcoding to `1280px` wide H.264/AAC before upload is much more reliable.
-- X editor-side media counts can drift during long uploads. Use preview DOM checks for `Image`, `Embedded video`, and anchor-to-next-media type before considering a draft ready.
-- When two or more media items share one anchor, or when video/image anchors are adjacent, count-only checks are not enough. Inspect the next few visible media items around that anchor and repair only the affected cluster if order drifted.
-
----
-
-## Repository Structure
-
-```text
 x-article-publisher-skill/
-├── install.sh
-├── README.md
-├── README_CN.md
+├── install.sh                    # one-command setup
+├── README.md / README_CN.md
 ├── scripts/
 │   └── clean-local-artifacts.sh
-├── docs/
-│   ├── GUIDE.md
-│   ├── GUIDE_CN.md
-│   ├── TROUBLESHOOTING.md
-│   └── TROUBLESHOOTING_CN.md
+├── docs/                         # GUIDE, TROUBLESHOOTING
 ├── skills/x-article-publisher/
 │   ├── SKILL.md
 │   ├── requirements.txt
-│   └── scripts/
-│       ├── copy_to_clipboard.py
-│       ├── doctor.sh
-│       ├── open_x_articles_browser.sh
-│       ├── optimize_media_blocks.py
-│       ├── parse_markdown.py
-│       ├── prepare_article_source.py
-│       └── table_to_image.py
+│   └── scripts/                  # core Python + shell, incl. doctor.sh
 └── .claude-plugin/plugin.json
 ```
 
-Local cleanup after test publishing:
+## Maintenance
 
-```bash
-bash scripts/clean-local-artifacts.sh
-```
-
-This removes ignored runtime artifacts such as `.playwright-cli/`, `tmp_*_publish/`, `x_article_runs/`, `.DS_Store`, and Python `__pycache__/` directories. It does not delete tracked source files.
-
----
+Passive maintenance as of 2026-06. The core pipeline is feature-complete and in weekly personal use; issues and PRs are handled best-effort.
 
 ## Credits
 
-- Feishu Markdown baseline: [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
-- Skill packaging inspiration: [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
+Feishu-to-Markdown baseline: [Wsine/feishu2md](https://github.com/Wsine/feishu2md)
+
+Skill packaging inspiration: [wshuyi/x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill)
 
 ## License
 
-MIT. Use it, modify it, and adapt it to your publishing workflow.
+MIT
