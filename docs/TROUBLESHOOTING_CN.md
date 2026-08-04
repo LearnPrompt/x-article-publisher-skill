@@ -68,9 +68,9 @@ python ~/.codex/skills/x-article-publisher/scripts/prepare_article_source.py "ht
 
 这通常不是网络问题。推荐处理：
 
-1. 拆成两篇 X Articles。
-2. 把连续截图合成长图。
-3. 保留关键视频，删除弱信息量媒体。
+1. 运行 `optimize_media_blocks.py`，把正文媒体目标设为 24 个。
+2. 只把相邻截图合成平衡的无裁切网格，并在 Preview 逐张检查完整性。
+3. 如果仍超过安全预算，再保留关键视频并删除弱信息量媒体。
 
 ---
 

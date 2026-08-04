@@ -71,14 +71,14 @@ Output JSON includes:
 - `callouts_normalized`: number of Feishu callout labels such as `Tip` or `[!TIP]` removed while preserving quoted content
 
 ### optimize_media_blocks.py
-Reduce body media block count before upload by merging adjacent image runs into vertical collage images:
+Reduce body media block count before upload by merging adjacent image runs into adaptive no-crop grid images:
 ```bash
 python ~/.codex/skills/x-article-publisher/scripts/optimize_media_blocks.py article.md \
   --max-body-media 24 \
   --output article.optimized.md
 ```
 
-Use this when parsed `content_media` is near or above the practical X Articles body-media limit. It preserves videos as separate upload blocks and merges only adjacent body images, leaving the first image/cover alone.
+Use this when parsed `content_media` is near or above the practical X Articles body-media limit. It preserves videos as separate upload blocks and merges only adjacent body images, leaving the first image/cover alone. Collages use a balanced grid with `contain` scaling: every source screenshot remains complete, without `crop` or `cover` behavior. The default final width is 1920px so text-heavy screenshots remain readable.
 
 ## Persistent Profile (Recommended)
 
@@ -119,7 +119,7 @@ python ~/.codex/skills/x-article-publisher/scripts/optimize_media_blocks.py arti
 python ~/.codex/skills/x-article-publisher/scripts/parse_markdown.py article.optimized.md > article.json
 ```
 
-Prefer merging adjacent image runs before upload. Do **not** merge videos; videos should keep their own block and original anchor.
+Prefer merging adjacent image runs before upload. Do **not** merge videos; videos should keep their own block and original anchor. Reject or regenerate any collage that becomes an extreme vertical strip: saving media blocks never justifies clipped or unreadable screenshots in X Preview.
 
 ### Feishu Callouts / Highlight Blocks
 
@@ -139,6 +139,7 @@ ffmpeg -y -i input.mov \
 ```
 
 Use the transcoded file for X upload, but keep the original Markdown anchor and block order.
+The `-2` height is required: it rounds the calculated height to an even number so `libx264` does not fail on outputs such as `1280x713`. Run `ffprobe` on every output before replacing the Markdown path; a zero-byte or unreadable copy must never enter the upload queue.
 
 ### GIF Upload Preflight
 
@@ -498,10 +499,11 @@ X can split a Markdown sentence across multiple editor text nodes when the sourc
 Fallback matching order:
 
 1. Try the normalized full anchor with Markdown markers removed (`**`, heading marks, blockquote marks).
-2. Strip a leading Markdown/DOM list marker (`-`, `*`, `+`, or `•`) before matching because X does not include it in the rendered list-item text.
-3. Try progressively shorter prefixes.
-4. For split rich text, use a distinctive short prefix such as the opening clause, but only if it is unique enough in the article.
-5. In Preview, re-check with a longer exact nearby phrase whenever a short anchor such as `比方说` could match an earlier paragraph.
+2. Strip parser-only code markers (`___CODE_BLOCK_START___` and `___CODE_BLOCK_END___`); they are never visible in X.
+3. Strip a leading Markdown/DOM list marker (`-`, `*`, `+`, or `•`) before matching because X does not include it in the rendered list-item text.
+4. Try progressively shorter prefixes.
+5. For split rich text, use a distinctive short prefix such as the opening clause, but only if it is unique enough in the article.
+6. In Preview, re-check with a longer exact nearby phrase whenever a short anchor such as `比方说` could match an earlier paragraph.
 
 ## Step 6.2: Insert Content Videos (File Upload)
 

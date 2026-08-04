@@ -52,6 +52,8 @@ You keep drafts as local Markdown. Point the skill at the .md file and it does t
 
 You embedded an 18MB GIF. X will not take it, so the skill transcodes it to MP4 before upload. Oversized videos get the same treatment automatically.
 
+When the article approaches X's body-media limit, the skill combines adjacent screenshots into adaptive no-crop grids. It only scales and pads images; it never saves a media slot by cutting off the left or right half of a screenshot.
+
 You use this every week. The browser profile persists, so you log in to X once and never see the login screen again.
 
 ## How it works
@@ -79,7 +81,7 @@ These are real runs, not synthetic benchmarks.
 | 10 videos + 4 images | Source order fully maintained |
 | 18MB GIF | Auto-converted to MP4, uploaded clean |
 | Adjacent media clusters | Drift repaired by cluster-level audit |
-| 34 body media items | Hit X's ~25 item ceiling — see limits below |
+| 34 body media items | Adjacent screenshots merged into no-crop grids, then uploaded within the safe budget |
 
 ## Setup
 
@@ -99,14 +101,14 @@ It checks every dependency and tells you exactly what is missing. More detail li
 
 This skill creates drafts and only drafts. There is no flag, no option, no prompt that makes it auto-publish — that is a design decision, not a missing feature.
 
-X caps body media at roughly 25 items; a 34-media article will lose the tail. Large video transcoding can take a few minutes, so a video-heavy post is a coffee break, not an instant. And X occasionally ignores certain PNG files without any error message — re-exporting as JPEG usually fixes it.
+X caps body media at roughly 25 items. The skill first merges adjacent images into no-crop grids, but an article without enough mergeable images may still need manual trimming. Large video transcoding can take a few minutes, so a video-heavy post is a coffee break, not an instant. And X occasionally ignores certain PNG files without any error message — re-exporting as JPEG usually fixes it.
 
 ## Repo structure
 
 ```
 x-article-publisher-skill/
 ├── install.sh                    # one-command setup
-├── README.md / README_CN.md
+├── README.md / README_EN.md
 ├── scripts/
 │   └── clean-local-artifacts.sh
 ├── docs/                         # GUIDE, TROUBLESHOOTING

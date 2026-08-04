@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv", ".mpeg", ".mpg"}
@@ -110,21 +111,77 @@ def resolve_media_path(base: Path, media_path: str) -> Path:
     return path
 
 
-def make_collage(image_paths: list[Path], output_path: Path, width: int, padding: int) -> None:
-    images = [Image.open(path).convert("RGB") for path in image_paths]
-    resized = []
-    for image in images:
-        height = max(1, int(image.height * width / image.width))
-        resized.append(image.resize((width, height), Image.LANCZOS))
+def balanced_row_counts(image_count: int) -> list[int]:
+    if image_count < 1:
+        raise ValueError("collage requires at least one image")
 
-    total_height = sum(image.height for image in resized) + padding * (len(resized) + 1)
-    canvas = Image.new("RGB", (width + padding * 2, total_height), "white")
+    row_count = max(1, round(math.sqrt(image_count)))
+    base, remainder = divmod(image_count, row_count)
+    # Put the fuller rows last so five screenshots become a balanced 2 + 3 grid.
+    return [base] * (row_count - remainder) + [base + 1] * remainder
+
+
+def make_collage(
+    image_paths: list[Path],
+    output_path: Path,
+    width: int,
+    padding: int,
+) -> dict:
+    if width <= padding * 2:
+        raise ValueError("collage width must be greater than twice the padding")
+    if padding < 0:
+        raise ValueError("collage padding cannot be negative")
+
+    images = []
+    for path in image_paths:
+        with Image.open(path) as image:
+            images.append(image.convert("RGB"))
+
+    row_counts = balanced_row_counts(len(images))
+    rows = []
+    image_index = 0
+    usable_width = width - padding * 2
+
+    for column_count in row_counts:
+        cell_width = max(
+            1,
+            (usable_width - padding * (column_count - 1)) // column_count,
+        )
+        # Constrain unusually tall screenshots without cropping them.
+        cell_height = max(1, round(cell_width * 1.5))
+        row_images = []
+        for image in images[image_index : image_index + column_count]:
+            row_images.append(
+                ImageOps.contain(
+                    image,
+                    (cell_width, cell_height),
+                    Image.Resampling.LANCZOS,
+                )
+            )
+        image_index += column_count
+        rows.append((cell_width, max(image.height for image in row_images), row_images))
+
+    total_height = sum(row_height for _, row_height, _ in rows) + padding * (len(rows) + 1)
+    canvas = Image.new("RGB", (width, total_height), "white")
     y = padding
-    for image in resized:
-        canvas.paste(image, (padding, y))
-        y += image.height + padding
+    for cell_width, row_height, row_images in rows:
+        row_width = sum(image.width for image in row_images) + padding * (len(row_images) - 1)
+        x = max(padding, (width - row_width) // 2)
+        for image in row_images:
+            image_y = y + (row_height - image.height) // 2
+            canvas.paste(image, (x, image_y))
+            x += image.width + padding
+        y += row_height + padding
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(output_path, quality=92)
+    return {
+        "layout": "adaptive_grid",
+        "rows": len(row_counts),
+        "row_counts": row_counts,
+        "width": canvas.width,
+        "height": canvas.height,
+    }
 
 
 def image_runs(blocks: list[str], cover_block_index: int | None) -> list[list[int]]:
@@ -202,7 +259,7 @@ def optimize(markdown_path: Path, output_path: Path, max_body_media: int, width:
 
         collage_name = f"x_article_collage_{collage_index:02d}.png"
         collage_path = base / "static" / collage_name
-        make_collage(image_paths, collage_path, width=width, padding=padding)
+        layout = make_collage(image_paths, collage_path, width=width, padding=padding)
         rel_path = collage_path.relative_to(base).as_posix()
         replacements[run[0]] = f"![Collage {collage_index}]({rel_path})"
         skip.update(run[1:])
@@ -212,6 +269,7 @@ def optimize(markdown_path: Path, output_path: Path, max_body_media: int, width:
                 "path": str(collage_path),
                 "merged_count": len(run),
                 "source_paths": [str(path) for path in image_paths],
+                **layout,
             }
         )
 
@@ -241,7 +299,7 @@ def main() -> None:
     parser.add_argument("markdown_file", help="Markdown file to optimize")
     parser.add_argument("--output", help="Output markdown path; default: <stem>.optimized.md")
     parser.add_argument("--max-body-media", type=int, default=24, help="Safe target for body media blocks")
-    parser.add_argument("--width", type=int, default=1280, help="Collage image content width")
+    parser.add_argument("--width", type=int, default=1920, help="Final collage width")
     parser.add_argument("--padding", type=int, default=18, help="Collage padding in pixels")
     args = parser.parse_args()
 

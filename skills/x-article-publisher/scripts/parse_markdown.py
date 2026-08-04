@@ -55,6 +55,7 @@ SEARCH_DIRS = [
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv", ".mpeg", ".mpg"}
 LEADING_LIST_MARKER = re.compile(r"^\s*[-+*•]\s+")
+CODE_BLOCK_MARKER = re.compile(r"___CODE_BLOCK_(?:START|END)___")
 
 
 def is_remote_path(media_path: str) -> bool:
@@ -73,7 +74,8 @@ def media_type_for_path(media_path: str) -> str:
 
 
 def normalize_anchor_text(text: str) -> str:
-    """Remove list markers that X omits from rendered text nodes."""
+    """Remove parser-only markers that X omits from rendered text nodes."""
+    text = CODE_BLOCK_MARKER.sub("", text)
     return LEADING_LIST_MARKER.sub("", text).strip()
 
 

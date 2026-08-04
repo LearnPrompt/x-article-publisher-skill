@@ -52,6 +52,8 @@ curl -fsSL https://raw.githubusercontent.com/LearnPrompt/x-article-publisher-ski
 
 你嵌了一张 18MB 的 GIF。X 不收这个，skill 会先转码成 MP4 再上传。超大视频也是同样的自动处理。
 
+正文媒体接近 X 上限时，skill 会把同一位置的连续截图合成无裁切自适应网格。它只做等比缩放和留白，不会为了省一个媒体位截掉截图的左半边或右半边。
+
 你每周都要发。浏览器 profile 持久化，X 只需要登录一次，之后再也见不到登录页。
 
 ## 工作原理
@@ -79,7 +81,7 @@ flowchart LR
 | 10 个视频 + 4 张图 | 源文档顺序完整保持 |
 | 18MB GIF | 自动转 MP4，干净上传 |
 | 相邻媒体簇 | 簇级审计修复漂移 |
-| 正文 34 个媒体 | 撞上 X 约 25 个的上限——见下方局限 |
+| 正文 34 个媒体 | 相邻截图先合成无裁切网格，再按安全媒体预算上传 |
 
 ## 环境准备
 
@@ -99,14 +101,14 @@ bash ~/.codex/skills/x-article-publisher/scripts/doctor.sh
 
 这个 skill 只创建草稿。没有任何参数、任何选项、任何 prompt 能让它自动发布——这是刻意的设计，永远如此。
 
-X 对正文媒体有约 25 个的上限，34 个媒体的文章会丢掉尾部。大视频转码可能要几分钟，视频很多的稿子够你喝杯咖啡。另外 X 偶尔会不报错地忽略某些 PNG，重新导出成 JPEG 通常就好了。
+X 对正文媒体有约 25 个的上限。skill 会优先把连续图片合成无裁切网格，但如果没有足够的相邻图片可合并，仍需要人工删减素材。大视频转码可能要几分钟，视频很多的稿子够你喝杯咖啡。另外 X 偶尔会不报错地忽略某些 PNG，重新导出成 JPEG 通常就好了。
 
 ## 仓库结构
 
 ```
 x-article-publisher-skill/
 ├── install.sh                    # 一条命令装好一切
-├── README.md / README_CN.md
+├── README.md / README_EN.md
 ├── scripts/
 │   └── clean-local-artifacts.sh
 ├── docs/                         # GUIDE, TROUBLESHOOTING

@@ -68,9 +68,9 @@ In field tests, X Articles may silently stop accepting body media around `25` it
 
 This is usually not a network issue. Recommended handling:
 
-1. Split into two X Articles.
-2. Merge consecutive screenshots into a long image.
-3. Keep the most important videos and remove low-value media.
+1. Run `optimize_media_blocks.py` with a target of 24 body media items.
+2. Merge only adjacent screenshots into balanced no-crop grids, then inspect every grid in Preview.
+3. If the safe budget is still exceeded, keep the most important videos and remove low-value media.
 
 ---
 

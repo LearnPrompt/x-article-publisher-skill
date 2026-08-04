@@ -17,8 +17,8 @@ English version: [GUIDE.md](GUIDE.md)
 
 ### 飞书链接模式
 
-1. 调用 `feishu2md dl --dump -o <workdir> <url>`。
-2. 如果 URL 包含 `/wiki/`，自动加 `--wiki`。
+1. docx 和单个 Wiki 分享页都调用 `feishu2md dl --dump -o <workdir> <url>`。
+2. 不要给普通 `/wiki/<token>` 分享页加 `--wiki`；该参数用于批量导出知识库根节点，可能拒绝单页分享链接。
 3. 找到生成的 Markdown 和 dump JSON。
 4. 从 dump JSON 里提取视频 file block。
 5. 通过飞书 OpenAPI 把视频下载到 `static/`。
@@ -229,6 +229,7 @@ ffmpeg -y -i input.mov \
 ```
 
 实战里，这比直接上传 40-90MB 的高码率录屏更稳定。
+其中 `-2` 会强制输出偶数高度，避免 `1280x713` 这类尺寸导致 `libx264` 失败。替换 Markdown 路径前，必须用 `ffprobe` 逐个确认转码文件可读。
 
 如果长视频上传过程中 X 编辑器或浏览器会话漂移，重开专用 profile 后回到已有草稿 URL 继续。不要重新粘贴正文；找到下一个缺失媒体的锚点继续插入。
 
@@ -245,6 +246,7 @@ ffmpeg -y -i input.mov \
 3. 正文视频数量等于 `content_videos`。
 4. 每个源媒体锚点后面的下一个可见媒体类型正确。
 5. 对视频来说，预览 DOM 里能看到 `video[aria-label="Embedded video"]` 或 `Play Video` 按钮。
+6. 每张合图都能看到所有源截图的四条边；即使媒体数量正确，也要拒绝只剩半张截图或极端竖长的合图。
 
 如果某个视频跑到后面的锚点下面：
 
@@ -263,8 +265,8 @@ ffmpeg -y -i input.mov \
 
 处理策略：
 
-1. 如果正文媒体超过 `25` 个，优先拆成多篇文章。
-2. 如果必须单篇，先把连续图片合成长图，或只保留最关键的视频。
+1. 正文媒体接近 `24` 个时运行 `optimize_media_blocks.py`。
+2. 只把相邻截图合成平衡的自适应网格，使用 contain 等比缩放和留白，禁止裁切或拉伸。
 3. 不要在第 `26` 个之后无限重试；这通常不是网络问题。
 
 ### PNG 兼容性

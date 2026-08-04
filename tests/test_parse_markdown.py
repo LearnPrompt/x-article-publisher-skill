@@ -56,6 +56,30 @@ class AnchorNormalizationTests(unittest.TestCase):
         )
         self.assertEqual(dividers[0]["after_text"], "Section ending")
 
+    def test_strips_internal_markers_from_code_block_media_anchor(self):
+        markdown = """```text
+first line
+visible final line
+```
+
+![](image.png)
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            (temp_path / "image.png").touch()
+            media, _, _, _ = parse_markdown.extract_media_and_dividers(
+                markdown, temp_path
+            )
+
+        self.assertEqual(media[0]["after_text"], "visible final line")
+        self.assertNotIn("CODE_BLOCK", media[0]["after_text"])
+
+    def test_strips_both_markers_from_single_line_code_anchor(self):
+        self.assertEqual(
+            self.extract_anchor("```\nvisible command\n```"),
+            "visible command",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

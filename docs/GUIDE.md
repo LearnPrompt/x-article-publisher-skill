@@ -17,8 +17,8 @@ The skill has two source modes.
 
 ### Feishu URL Mode
 
-1. Call `feishu2md dl --dump -o <workdir> <url>`.
-2. If the URL contains `/wiki/`, add `--wiki`.
+1. Call `feishu2md dl --dump -o <workdir> <url>` for both docx and shared wiki page URLs.
+2. Do not add `--wiki` for a shared `/wiki/<token>` page. That flag is for batch-exporting a wiki root and can reject ordinary page links.
 3. Find the generated Markdown and dump JSON.
 4. Extract video file blocks from dump JSON.
 5. Download video files from Feishu OpenAPI into `static/`.
@@ -231,6 +231,7 @@ ffmpeg -y -i input.mov \
 ```
 
 This has been more stable than uploading 40-90MB, high-bitrate screen recordings directly.
+The `-2` height forces an even output dimension, avoiding `libx264` failures such as `1280x713`. Verify every generated copy with `ffprobe` before replacing its Markdown path.
 
 When the X editor becomes unstable during long video runs, restart the dedicated profile and resume from the existing draft URL. Do not paste the article body again; locate the next missing media anchor and continue.
 
@@ -247,6 +248,7 @@ The final audit should check:
 3. Body video count matches `content_videos`.
 4. Each source media anchor maps to the next visible media item of the expected type.
 5. For videos, preview DOM contains `video[aria-label="Embedded video"]` or `Play Video` buttons.
+6. Every generated collage shows all four edges of every source screenshot; reject cropped halves and extreme vertical strips even when the media count is correct.
 
 If a video appears under the wrong later anchor:
 
@@ -265,8 +267,8 @@ In field tests, X Articles may silently stop accepting body media after roughly 
 
 Recommended handling:
 
-1. Split the article when body media exceeds `25` items.
-2. If it must remain one article, merge consecutive screenshots into a long image or keep only the most important videos.
+1. Run `optimize_media_blocks.py` when body media approaches `24` items.
+2. Merge only adjacent screenshots into a balanced adaptive grid using contain scaling and padding; never crop or stretch them.
 3. Do not retry indefinitely after the 26th media item; this is usually not a network issue.
 
 ### PNG compatibility

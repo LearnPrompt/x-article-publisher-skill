@@ -95,14 +95,10 @@ def get_tenant_access_token(app_id: str, app_secret: str) -> str:
     return data["tenant_access_token"]
 
 
-def is_feishu_wiki_url(source_url: str) -> bool:
-    return bool(re.search(r"/wiki/", source_url, flags=re.IGNORECASE))
-
-
 def run_feishu2md_download(source_url: str, output_dir: Path) -> None:
     cmd = ["feishu2md", "dl", "--dump", "-o", str(output_dir)]
-    if is_feishu_wiki_url(source_url):
-        cmd.append("--wiki")
+    # A shared /wiki/<token> URL is a single page. feishu2md's --wiki flag is
+    # for batch-exporting a wiki root and rejects ordinary page share links.
     cmd.append(source_url)
 
     proc = subprocess.run(cmd, text=True, capture_output=True, timeout=600)
