@@ -34,12 +34,11 @@ VIDEO_EXTENSIONS = {
 
 
 def is_feishu_url(source: str) -> bool:
-    return bool(
-        re.match(
-            r"^https?://[^/]*(feishu\.cn|larksuite\.com|feishu\.sg|feishu\.com)/",
-            source.strip(),
-            flags=re.IGNORECASE,
-        )
+    parsed = urllib.parse.urlparse(source.strip())
+    host = (parsed.hostname or "").lower()
+    domains = ("feishu.cn", "larksuite.com", "feishu.sg", "feishu.com")
+    return parsed.scheme in {"http", "https"} and any(
+        host == domain or host.endswith("." + domain) for domain in domains
     )
 
 
@@ -196,19 +195,11 @@ def extract_video_file_tokens_with_anchor(dump_json_path: Path) -> list[dict]:
     videos = []
     for idx, bid in enumerate(root_children):
         block = block_map.get(bid) or {}
-        if int(block.get("block_type", -1)) != 33:  # view block
-            continue
-        child_ids = block.get("children") or []
-        if not child_ids:
-            continue
-        child_block = block_map.get(child_ids[0]) or {}
-        if int(child_block.get("block_type", -1)) != 23:  # file block
-            continue
-
-        file_obj = child_block.get("file") or {}
-        token = (file_obj.get("token") or "").strip()
-        name = (file_obj.get("name") or "").strip()
-        if not token or not name or not is_video_filename(name):
+        if int(block.get("block_type", -1)) == 23:
+            file_blocks = [block]
+        elif int(block.get("block_type", -1)) == 33:
+            file_blocks = [block_map.get(child_id) or {} for child_id in block.get("children", [])]
+        else:
             continue
 
         anchor_text = ""
@@ -226,14 +217,16 @@ def extract_video_file_tokens_with_anchor(dump_json_path: Path) -> list[dict]:
                 if anchor_text:
                     break
 
-        videos.append(
-            {
-                "token": token,
-                "name": name,
-                "root_index": idx,
-                "anchor_text": anchor_text[:120],
-            }
-        )
+        for file_block in file_blocks:
+            if int(file_block.get("block_type", -1)) != 23:
+                continue
+            file_obj = file_block.get("file") or {}
+            token = (file_obj.get("token") or "").strip()
+            name = (file_obj.get("name") or "").strip()
+            if token and name and is_video_filename(name):
+                videos.append({"token": token, "name": name, "root_index": idx,
+                               "anchor_text": anchor_text[:120]})
+
     return videos
 
 
@@ -306,13 +299,15 @@ def normalize_feishu_callouts(md_path: Path) -> int:
         nonlocal changed
         raw_lines = match.group(0).splitlines()
         quote_lines = []
-        removed_marker = False
+        seen_content = False
         for raw in raw_lines:
             text = re.sub(r"^\s*>\s?", "", raw).rstrip()
-            if not removed_marker and is_callout_marker(text):
-                removed_marker = True
+            if not seen_content and is_callout_marker(text):
+                seen_content = True
                 changed += 1
                 continue
+            if text.strip():
+                seen_content = True
             quote_lines.append(text)
 
         while quote_lines and not quote_lines[0].strip():
@@ -395,6 +390,9 @@ def insert_block_after_anchor(content: str, block_markdown: str, anchor_text: st
     if block_end == -1:
         block_end = len(content)
     pos = block_end
+    if search_start > pos:
+        # A previous video was already inserted after this same paragraph.
+        pos = search_start
     prefix = content[:pos].rstrip("\n")
     suffix = content[pos:].lstrip("\n")
 

@@ -4,7 +4,7 @@ Optimize Markdown media blocks for X Articles.
 
 X Articles can silently ignore uploads after a practical body-media limit. This
 helper reduces media block count by merging adjacent image-only runs into one
-vertical collage, preserving videos as separate uploadable media blocks.
+adaptive no-crop grid, preserving videos as separate uploadable media blocks.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from PIL import Image, ImageOps
 
@@ -45,7 +45,8 @@ def split_blocks(markdown: str) -> list[str]:
     in_code = False
     code: list[str] = []
 
-    for line in markdown.splitlines():
+    lines = markdown.splitlines()
+    for line_index, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("```"):
             if in_code:
@@ -72,7 +73,14 @@ def split_blocks(markdown: str) -> list[str]:
             if current:
                 blocks.append("\n".join(current))
                 current = []
-            blocks.append(stripped)
+            if (
+                stripped.startswith(">") and line_index > 0
+                and lines[line_index - 1].strip().startswith(">")
+                and blocks and blocks[-1].startswith(">")
+            ):
+                blocks[-1] += "\n" + stripped
+            else:
+                blocks.append(stripped)
             continue
         current.append(line)
 
@@ -219,7 +227,24 @@ def first_image_index(blocks: list[str]) -> int | None:
     return None
 
 
+def relocate_media(blocks: list[str], source_dir: Path, output_dir: Path) -> str:
+    """Keep media references valid when the output Markdown lives elsewhere."""
+    relocated = []
+    for block in blocks:
+        media = detect_media(block)
+        if media and not is_remote(media[1]) and source_dir.resolve() != output_dir.resolve():
+            absolute = resolve_media_path(source_dir, media[1]).resolve()
+            relative = os.path.relpath(absolute, output_dir.resolve())
+            # Encode path punctuation so Markdown/HTML delimiters remain valid.
+            block = block.replace(media[1], quote(Path(relative).as_posix(), safe="/"), 1)
+        relocated.append(block)
+    return "\n\n".join(relocated) + "\n"
+
+
 def optimize(markdown_path: Path, output_path: Path, max_body_media: int, width: int, padding: int) -> dict:
+    if max_body_media < 0:
+        raise ValueError("max_body_media cannot be negative")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     original = markdown_path.read_text(encoding="utf-8")
     blocks = split_blocks(original)
     base = markdown_path.parent
@@ -227,7 +252,11 @@ def optimize(markdown_path: Path, output_path: Path, max_body_media: int, width:
     original_body_media = count_body_media(blocks, cover_idx)
 
     if original_body_media <= max_body_media:
-        output_path.write_text(original, encoding="utf-8")
+        output_path.write_text(
+            original if base.resolve() == output_path.parent.resolve()
+            else relocate_media(blocks, base, output_path.parent),
+            encoding="utf-8",
+        )
         return {
             "input": str(markdown_path),
             "output": str(output_path),
@@ -279,7 +308,7 @@ def optimize(markdown_path: Path, output_path: Path, max_body_media: int, width:
             continue
         new_blocks.append(replacements.get(idx, block))
 
-    optimized = "\n\n".join(new_blocks) + "\n"
+    optimized = relocate_media(new_blocks, base, output_path.parent)
     output_path.write_text(optimized, encoding="utf-8")
     after_body_media = count_body_media(new_blocks, first_image_index(new_blocks))
 

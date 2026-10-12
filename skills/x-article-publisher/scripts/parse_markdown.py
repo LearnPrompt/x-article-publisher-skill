@@ -389,11 +389,15 @@ def markdown_to_html(markdown: str) -> str:
         group = match.group(0)
         raw_lines = group.splitlines()
         lines = []
+        seen_content = False
         for raw in raw_lines:
             # Remove leading ">" and one optional space
             text = re.sub(r'^\s*>\s?', '', raw).rstrip()
-            if callout_marker.match(text) or text.strip().lower() in plain_callout_markers:
+            if not seen_content and (callout_marker.match(text) or text.strip().lower() in plain_callout_markers):
+                seen_content = True
                 continue
+            if text.strip():
+                seen_content = True
             lines.append(text)
 
         # Trim empty lines on both ends, keep internal blank lines

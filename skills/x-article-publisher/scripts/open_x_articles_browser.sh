@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+X_SKILL_HOME="${CODEX_HOME:-$HOME/.codex}"
+PWCLI="$X_SKILL_HOME/skills/playwright/scripts/playwright_cli.sh"
 PROFILE="${X_ARTICLES_PROFILE:-$HOME/.codex/browser-profiles/x-articles}"
 URL="https://x.com/compose/articles"
 
